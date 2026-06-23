@@ -39,3 +39,16 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+.env
+
+serviceAccountKey.json
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+*logs.txt
