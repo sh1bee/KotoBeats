@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect } from 'react';
+// src/screens/HomeScreen.tsx
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -16,6 +17,10 @@ import { useAudioStore } from '../store/audioStore';
 import { useFlashcardStore } from '../store/flashcardStore';
 import TrackPlayer from '@rntp/player';
 import type { Song } from '../types';
+
+import { useSyncFlashcards } from '../hooks/useSyncFlashcards';
+import { SRSReviewModal } from '../components/SRSReviewModal';
+import { useDueCards } from '../hooks/useDueCards';
 
 interface SongCardProps {
   song: Song;
@@ -48,11 +53,12 @@ export const HomeScreen = () => {
   const setLoopInterval = useAudioStore((state) => state.setLoopInterval);
   
   const deck = useFlashcardStore((state) => state.deck);
-  const dueCardsCount = deck.filter(
-    (card) => new Date(card.srs.nextReviewDate) <= new Date()
-  ).length;
+  const [showSRSModal, setShowSRSModal] = useState(false);
+  const dueCardsCount = useDueCards().length; // thay thế dòng cũ
 
   const [loading, setLoading] = React.useState(true);
+
+  useSyncFlashcards();
 
   // FIXED: Fetch songs from Firebase on mount
   useEffect(() => {
@@ -135,7 +141,7 @@ export const HomeScreen = () => {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.srsCard}>
+        <TouchableOpacity style={styles.srsCard} onPress={() => setShowSRSModal(true)}>
           <LinearGradient
             colors={['#1DB954', '#00F0FF']}
             style={styles.srsGradient}
@@ -164,6 +170,10 @@ export const HomeScreen = () => {
               ))}
             </ScrollView>
           )}
+          <SRSReviewModal
+            visible={showSRSModal}
+            onClose={() => setShowSRSModal(false)}
+          />
         </View>
       </ScrollView>
     </View>

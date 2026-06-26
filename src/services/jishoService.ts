@@ -1,3 +1,4 @@
+// src/services/jishoService.ts
 export interface JishoResult {
   slug: string;
   japanese: { word?: string; reading?: string }[];
@@ -12,16 +13,15 @@ export const fetchJishoDefinition = async (keyword: string): Promise<JishoResult
       ? `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
       : targetUrl;
 
-    // FIXED: Thêm User-Agent header để tránh lỗi 403 Forbidden từ Cloudflare
     const response = await fetch(finalUrl, {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 KotoBeatsApp/1.0',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Mobile Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
+        'Referer': 'https://jisho.org/',
+        'Origin': 'https://jisho.org',
       },
     });
-    if (!response.ok) {
-      throw new Error(`Jisho API request failed with status ${response.status}`);
-    }
 
     const json = await response.json();
 

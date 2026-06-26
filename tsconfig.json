@@ -1,12 +1,21 @@
+// tsconfig.json
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
   },
   "exclude": [
     "node_modules", // Thêm dòng này để VS Code không quét thư mục thư viện nữa
     "babel.config.js",
     "metro.config.js"
+  ],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.d.ts"
   ]
 }

@@ -1,3 +1,4 @@
+// App.tsx
 import 'react-native-gesture-handler';
 
 import React, { useEffect, useState } from 'react';
@@ -7,15 +8,23 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { setupTrackPlayer } from './src/services/trackPlayerService';
 
+// ❌ XÓA DÒNG DƯỚI ĐÂY ĐỂ TRÁNH GỌI 2 LẦN (DOUBLE SETUP):
+// setupTrackPlayer().catch(console.error);
+
 export default function App() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     async function init() {
-      await setupTrackPlayer();
-      setIsReady(true);
+      try {
+        await setupTrackPlayer();
+      } catch (error) {
+        console.error("TrackPlayer setup failed:", error);
+      } finally {
+        setIsReady(true);
+      }
     }
-    void init();
+    void init(); // Hoặc đơn giản là init();
   }, []);
 
   if (!isReady) {

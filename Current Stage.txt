@@ -1,0 +1,288 @@
+📋 Tổng quan dự án KotoBeat
+Mục tiêu dự án (Goal)
+Ứng dụng học tiếng Nhật qua âm nhạc - sử dụng lời bài hát đồng bộ thời gian và phương pháp spaced repetition (SRS) với đoạn audio để tăng độ ghi nhớ từ vựng.
+
+🛠 Tech Stack & Dependencies
+Thành phần	Phiên bản	Ghi chú
+Expo SDK	v56	Yêu cầu development build
+React Native	0.85.3	
+React	19.2.3	
+React Native Track Player	^5.6.0 (@rntp/player)	Core audio playback
+Zustand	^5.0.14	State management
+Firebase	^12.15.0	Firestore + Storage + Auth
+React Navigation	^7.x	Bottom tabs navigation
+React Reanimated	4.3.1 (package.json) / 3.12.1 (installed)	Animations
+Reanimated Worklets	0.8.3	
+✅ Những gì đã có (Implemented Features)
+1. Architecture & Navigation
+App.tsx: Entry point với loading screen, thiết lập TrackPlayer
+AppNavigator.tsx: 3-tab navigation (Home, Player, Profile) với custom blur tab bar
+index.js: Đăng ký playback service
+2. Audio System
+trackPlayerService.ts: Setup TrackPlayer với setCommands() API v5
+useAudioSync.ts: Hook đồng bộ vị trí playback, xử lý loop playback
+cacheEngine.ts: Cache audio xuống thiết bị (downloadAsync)
+playbackService.ts: Xử lý remote controls (play/pause/next/previous/stop)
+@rntp/player.d.ts: Type definitions cho TrackPlayer
+src/mocks/@rntp/player.web.ts: Mock cho web development
+3. State Management (Zustand)
+audioStore.ts: Quản lý currentSong, playlist, playbackPosition, isPlaying, loopInterval
+flashcardStore.ts: Quản lý deck, xử lý swipe gesture cho SRS
+4. Types & Data Models
+LyricToken: word, base, romaji
+LyricLine: lineId, startTime, endTime, text, translation, tokens
+Song: _id, title, artist, coverUrl, audioUrl, duration, lyrics/lrc/lrcUrl
+Flashcard: _id, word, reading, meaning, jlptLevel, snippetData, srs
+SRSData: repetition, interval, easeFactor, nextReviewDate
+5. Firebase Integration
+config.ts: Khởi tạo Firebase app, auth (AsyncStorage persistence), firestore, storage
+dbService.ts: CRUD operations cho songs và flashcards
+6. Utilities
+lrcParser.ts: Parse file LRC, tự động tính endTime dựa thời gian dòng tiếp theo, tokenize từ
+srsEngine.ts: Thuật toán SuperMemo-2 cho tính toán ngày ôn tiếp theo
+7. Screens
+HomeScreen.tsx: Danh sách bài hát, SRS card preview, streak display
+PlayerScreen.tsx:
+Album art với animation xoay
+Lyric display với FlatList tối ưu (getItemLayout, memoization)
+Progress bar
+Quiz mode từ vựng
+Dictionary modal
+ProfileScreen.tsx: Thống kê học tập, cài đặt
+SRSFlashcardScreen.tsx: Flashcard với swipe gesture (Tinder-style)
+8. Components
+PlayerProgressBar.tsx: Thanh tiến trình với format thời gian, fallback khi native track duration lỗi
+LyricLineUI.tsx: Hiển thị từng dòng lời, double-tap để seek
+DictionaryModal.tsx: Modal từ điển Jisho
+TinderCard.tsx: Flashcard swipe animation
+PlayerProgressBar.tsx: Progress bar
+9. External Services
+jishoService.ts: Fetch từ điển Jisho API (với proxy cho web)
+10. Assets & Seed Data
+14 file LRC trong _seedData/ (bài hát Nhật)
+songs_list.json với metadata 14 bài hát
+Mock song data trong mockSong.ts
+11. Configuration
+app.config.js: Expo build properties
+eas.json: Build profiles (development, preview, production)
+babel.config.js: Reanimated plugin
+metro.config.js: Extra node modules config
+❌ Những gì chưa có (Missing Features)
+1. Firebase-Related
+❌ Login/Register UI (chỉ có Profile screen tĩnh)
+❌ Authentication flow hoàn chỉnh
+❌ Sync flashcards lên Firebase khi tạo mới (chỉ có tạo local)
+❌ Firebase security rules chưa được định nghĩa
+2. Audio/Player
+❌ Không dùng audio cache khi phát (chỉ có sẵn cacheEngine nhưng không tích hợp)
+❌ Skip to next/previous không hoạt động (có code nhưng playlist rỗng/lỗi)
+❌ Không hỗ trợ offline playback (thiếu download LRC files)
+❌ Không có background audio khi app kill (cần manifest config)
+3. SRS/Flashcard
+❌ Chưa có màn hình SRS trong navigator (SRSFlashcardScreen tồn tại nhưng không được đăng ký)
+❌ Không lưu SRS data thực khi swipe (chỉ log console)
+❌ Không có cài đặt độ khó/JLPT level
+4. Dictionary
+❌ Modal chưa có nút "Thêm vào Flashcard" hoạt động
+❌ Không fetch romaji từ Jisho API
+5. Lyrics Features
+❌ Không có romaji display (chỉ có tokens nhưng không render)
+❌ Không có audio-snippet loop khi mở dictionary (có setLoopInterval nhưng chưa tích hợp hoàn toàn)
+6. UI/UX
+❌ Không có splash screen
+❌ Không có onboarding flow
+❌ Thiếu icon assets (chỉ dùng Ionicons)
+❌ Không có dark/light mode toggle
+❌ Không có notification settings
+7. Missing Screens
+❌ Search songs
+❌ Song detail
+❌ Settings screen
+❌ About screen
+❌ Offline songs library
+8. Build & Deployment
+❌ Chưa có iOS configuration
+❌ Không có app icon thực (chỉ placeholder)
+❌ Không có push notification setup
+🔄 Những gì hoạt động (Working Features)
+Core Functionality
+✅ Phát nhạc (mock URL audio)
+✅ Hiển thị lời bài hát đồng bộ thời gian
+✅ Double-tap để seek tới vị trí dòng lời
+✅ Click từ để mở dictionary modal
+✅ Toggle play/pause
+✅ Thanh progress bar
+UI Components
+✅ Tab navigation (Home/Player/Profile)
+✅ BlurView tab bar
+✅ Album art with rotation animation
+✅ Lyric display với active line highlight
+✅ Quiz mode khi bật "Chế độ học"
+✅ TinderCard swipe animation
+State Management
+✅ Zustand stores hoạt động
+✅ Playback position cập nhật real-time
+⚠️ Những gì chưa hoạt động / Có vấn đề (Non-working Issues)
+1. Version Conflicts
+⚠️ react-native-reanimated: package.json yêu cầu 4.3.1 nhưng môi trường chỉ có 3.12.1
+⚠️ react-native-safe-area-context: package.json yêu cầu ~5.7.0 nhưng có 5.8.0
+⚠️ react-dom: phiên bản mismatch
+⚠️ Node.js version quá cũ (v20.17.0 < yêu cầu >=20.19.4)
+2. TrackPlayer Issues
+HomeScreen.tsx dùng id thay vì mediaId (v5 API sử dụng id nhưng mock/web có thể không tương thích)
+trackPlayer.ts dùng API cũ (Capability, updateOptions) - xung đột với v5 API
+trackPlayerNativeService.ts vẫn dùng reset() - deprecated trong v5 (nên dùng setMediaItems([]))
+3. Code Duplication
+trackPlayer.ts, trackPlayerService.ts, trackPlayerNativeService.ts - 3 file service trùng chức năng
+Không rõ file nào đang được sử dụng
+4. Firebase Configuration
+dbService.ts query sai: dùng collection nhưng thiếu query import
+Firebase auth chưa có provider (Google, Apple, Email)
+Không có error handling khi Firebase config thiếu
+5. Missing Integration
+SRSFlashcardScreen không có trong AppNavigator
+DictionaryModal onAddToFlashcard prop không được truyền xuống
+CacheEngine tồn tại nhưng không được gọi từ trackPlayerService
+6. LRC Parser Issues
+Regex regex chỉ match 2 chữ số millisecond :\d{2}) thay vì 3 chữ số
+Không xử lý trường hợp LRC có multiple timestamps trên cùng 1 dòng
+📝 Những gì nên có (Recommendations)
+Missing Implementations
+Audio Caching Integration: Gọi getCachedAudioPath() trước khi phát nhạc
+SRS Screen Registration: Thêm SRSFlashcardScreen vào navigator
+Dictionary Integration: Hoàn thiện chức năng thêm flashcard từ modal
+Romaji Display: Thêm romaji subtitles under tokens
+Loop Audio Snippet: Khi mở dictionary, tự động loop đoạn âm thanh
+Firebase Auth: Hoàn thiện authentication flow
+Offline Support: Download LRC + audio cho offline mode
+Error Boundaries: Thêm error handling toàn cục
+Loading States: Thêm skeleton loading cho UI
+TypeScript Config: Tạo tsconfig.json rõ ràng
+Code Quality Improvements
+Xóa file trùng lặp: trackPlayer.ts và trackPlayerNativeService.ts nên hợp nhất
+PropTypes: Thêm typing chặt chẽ hơn cho gesture handler
+Performance: Prefetch audio khi danh sách load xong
+Accessibility: Thêm accessibility labels cho touchable elements
+Testing: Thêm unit tests cho SRS engine và LRC parser
+Feature Enhancements
+Search functionality cho songs
+Favorites/Bookmarks feature
+Daily goals và streak tracking chính xác
+Multiple choice quiz với Jisho definitions thực
+Export flashcards to Anki format
+Push notifications cho SRS reminders
+Dark/Light theme toggle
+Custom playlists tạo ngoài
+📊 Project Structure Diagram
+src/
+├── components/
+│   ├── DictionaryModal.tsx      ✅ Hoạt động
+│   ├── LyricLineUI.tsx          ✅ Hoạt động
+│   ├── PlayerProgressBar.tsx     ✅ Hoạt động
+│   └── TinderCard.tsx           ✅ Hoạt động (chưa trong navigator)
+├── hooks/
+│   └── useAudioSync.ts          ✅ Hoạt động
+├── navigation/
+│   └── AppNavigator.tsx         ✅ Hoạt động
+├── screens/
+│   ├── HomeScreen.tsx           ✅ Hoạt động
+│   ├── PlayerScreen.tsx         ✅ Hoạt động
+│   ├── ProfileScreen.tsx        ✅ Hoạt động (tĩnh)
+│   └── SRSFlashcardScreen.tsx   ❌ Chưa trong navigator
+├── services/
+│   ├── firebase/
+│   │   ├── config.ts          ⚠️ Cần kiểm tra .env
+│   │   └── dbService.ts        ⚠️ Query import thiếu
+│   ├── jishoService.ts         ✅ Hoạt động
+│   ├── playbackService.ts      ✅ Hoạt động
+│   ├── trackPlayer.ts          ❌ API cũ
+│   ├── trackPlayerService.ts   ✅ Hoạt động
+│   └── trackPlayerNativeService.ts ❌ API cũ
+├── store/
+│   ├── audioStore.ts           ✅ Hoạt động
+│   └── flashcardStore.ts       ✅ Hoạt động
+├── types/
+│   ├── index.ts               ✅ Hoạt động
+│   └── firebase.d.ts          ✅ Hoạt động
+├── utils/
+│   ├── cacheEngine.ts         ✅ Tồn tại (chưa tích hợp)
+│   └── lrcParser.ts           ✅ Hoạt động
+└── data/
+    └── mockSong.ts            ✅ Hoạt động
+
+----------
+
+23:41:45 25/06/2026
+📊 Tổng quan So sánh
+✅ Các tính năng đã có (Implemented Features) - Phần lớn vẫn giữ nguyên hoặc được cải tiến
+🆕 Các cải tiến mới đã được thực hiện:
+Hạng mục	Trước (Current Stage.txt)	Hiện tại (Dự án thực tế)	Trạng thái
+Firebase-Related	❌ Login/Register UI chỉ có Profile screen tĩnh	✅ LoginScreen.tsx đã được tạo hoàn chỉnh với phone + displayName	HOÀN THÀNH
+❌ Authentication flow chưa có	✅ userStorage.ts cho AsyncStorage persistence, setUserId trong flashcardStore	HOÀN THÀNH
+❌ Sync flashcards khi tạo mới chỉ local	✅ flashcardSyncService.ts + useSyncFlashcards.ts cho realtime sync Firestore	HOÀN THÀNH
+SRS/Flashcard	❌ SRSFlashcardScreen chưa có trong navigator	✅ SRSReviewModal.tsx được tạo (dùng trong HomeScreen) + TinderCard swipe animation	HOÀN THÀNH
+❌ Chưa lưu SRS data thực khi swipe	✅ processSwipe trong flashcardStore gọi updateFlashcardSRS Firestore	HOÀN THÀNH
+Dictionary	❌ Modal chưa có nút "Thêm vào Flashcard"	✅ Swipe-to-add + Học hết button hoạt động trong DictionaryModal	HOÀN THÀNH
+❌ Không fetch romaji từ Jisho API	✅ aiAnalysisService.ts phân tích bằng AI Groq, trả về alignedTranslation + wordBreakdown	THAY THẾ/BƯỚC TIẾN
+Audio/Player	❌ trackPlayer.ts dùng API cũ	✅ trackPlayerService.ts dùng setCommands() + setMediaItems() API v5	HOÀN THÀNH
+Hooks	—	✅ useDueCards.ts, useTrackProgress.ts, useTrackChangeListener.ts mới được tạo	MỚI
+🔧 Chi tiết cải tiến:
+1. Authentication Flow (MỚI)
+LoginScreen.tsx: Màn hình đăng nhập với phone + displayName
+userStorage.ts: Lưu/đọc/thu hồi user từ AsyncStorage
+AppNavigator.tsx: Kiểm tra user, conditional rendering Login/MainTabs
+2. Realtime Flashcard Sync (MỚI)
+flashcardSyncService.ts: Realtime subscription bằng onSnapshot, addFlashcardToFirestore, updateFlashcardSRS
+useSyncFlashcards.ts: Hook tự động sync khi userId thay đổi
+flashcardStore.ts: processSwipe và addCard đều gọi Firebase sync
+3. Dictionary Modal Enhancement (MỚI)
+Swipe gesture trái/phải để thêm từ vào SRS
+Nút "Học hết" thêm tất cả từ trong câu
+aiAnalysisService.ts: Phân tích dòng lời bằng Groq AI với caching
+4. TrackPlayer v5 API (ĐÃ SỬA)
+setCommands() thay cho Capability + updateOptions
+setMediaItems() thay cho reset() API cũ
+skipToIndex() cho phát đúng bài
+5. SRS Review UI (MỚI)
+SRSReviewModal.tsx: Modal SRS Tinder-style với progress indicator
+Tích hợp vào HomeScreen (nút "Ôn tập SRS hôm nay")
+6. Offline Dictionary (MỚI)
+offlineDictionaryService.ts: Sử dụng JMdict data local
+assets/dictionary/jmdict-eng-common-3.6.2.json
+⚠️ Vấn đề còn tồn đọng:
+Vấn đề	Trạng thái
+react-native-reanimated version conflict (4.3.1 vs 3.12.1)	Chưa giải quyết
+CacheEngine chưa tích hợp vào trackPlayerService	Chưa dùng getCachedAudioPath
+LRC Parser regex chỉ match 2 chữ số ms	Vẫn còn (line 17: \d{2}(?:\.\d+)? nhưng fallback xuống 2 chữ số)
+Background audio khi app kill	Chưa có manifest config
+iOS/Android build config chưa hoàn thiện	Chưa có app icon thực
+📁 Cấu trúc thư mục thực tế (so với Current Stage.txt):
+src/
+├── components/
+│   ├── DictionaryModal.tsx      ✅ Đã có thêm swipe-to-add
+│   ├── LyricLineUI.tsx          ✅ Vẫn giữ
+│   ├── PlayerProgressBar.tsx    ✅ Vẫn giữ
+│   ├── SRSReviewModal.tsx       ✅ MỚI - chưa đề cập trong doc cũ
+│   └── TinderCard.tsx           ✅ Vẫn hoạt động
+├── hooks/
+│   ├── useAudioSync.ts          ✅ Vẫn giữ
+│   ├── useDueCards.ts           ✅ MỚI
+│   ├── useSyncFlashcards.ts     ✅ MỚI
+│   ├── useTrackChangeListener.ts ✅ MỚI
+│   └── useTrackProgress.ts      ✅ MỚI
+├── navigation/
+│   └── AppNavigator.tsx         ✅ Đã có Login flow
+├── screens/
+│   ├── HomeScreen.tsx           ✅ Đã tích hợp SRSReviewModal
+│   ├── LoginScreen.tsx          ✅ MỚI
+│   ├── PlayerScreen.tsx         ✅ Đã tích hợp DictionaryModal
+│   ├── ProfileScreen.tsx        ✅ Đã có logout
+│   └── SRSFlashcardScreen.tsx   ✅ Tồn tại nhưng chưa trong navigator
+└── services/
+    ├── firebase/
+    │   ├── config.ts            ⚠️ Vẫn cần .env
+    │   └── dbService.ts         ✅ Đã fix query import
+    ├── flashcardSyncService.ts  ✅ MỚI
+    ├── playbackService.ts       ✅ Vẫn giữ
+    ├── trackPlayerService.ts    ✅ Đã cập nhật v5 API
+    └── aiAnalysisService.ts     ✅ MỚI

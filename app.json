@@ -6,14 +6,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kotobeat.app",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio"
-        ]
+        "UIBackgroundModes": ["audio"]
       }
     },
     "android": {
@@ -28,17 +25,7 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "minSdkVersion": 24
-          }
-        }
-      ],
-      "./plugins/withTrackPlayerTurboModuleFix"
-    ]
+    }
+    // Đã xóa mảng plugins ở đây để tránh trùng lặp với app.config.js
   }
 }

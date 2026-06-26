@@ -1,3 +1,4 @@
+// src/screens/PlayerScreen.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -9,10 +10,9 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import TrackPlayer from '@rntp/player';
-
+import { loadAndPlaySong } from '../services/trackPlayerService';
 import { DictionaryModal } from '../components/DictionaryModal';
 import { LyricLineUI } from '../components/LyricLineUI';
 import { PlayerProgressBar } from '../components/PlayerProgressBar';
@@ -21,9 +21,12 @@ import { useAudioStore } from '../store/audioStore';
 import { useFlashcardStore } from '../store/flashcardStore';
 import { useAudioSync } from '../hooks/useAudioSync';
 import type { Flashcard, LyricLine, LyricToken } from '../types';
+import { useTrackChangeListener } from '../hooks/useTrackChangeListener';
+import { analyzeLyricLine } from '../services/aiAnalysisService';
+import type { LineAnalysis } from '../services/aiAnalysisService';
 
 // ==========================================
-// COMPONENT: Magnetic Focus Lyric Row (Tối ưu 60FPS)
+// COMPONENT 1: Focus Lyric Row (Tối ưu 60FPS)
 // ==========================================
 interface FocusLyricRowProps {
   item: LyricLine;
@@ -34,7 +37,6 @@ interface FocusLyricRowProps {
   quizAnswered: boolean;
   onTokenPress: (token: LyricToken, line: LyricLine) => void;
   onLineDoubleTap: (line: LyricLine) => void;
-  onAddSrs: (line: LyricLine, token: LyricToken) => void;
 }
 
 const FocusLyricRow = React.memo(({ 
@@ -45,13 +47,11 @@ const FocusLyricRow = React.memo(({
   maskedIndex,
   quizAnswered,
   onTokenPress, 
-  onLineDoubleTap, 
-  onAddSrs 
+  onLineDoubleTap,
 }: FocusLyricRowProps) => {
   const isActive = index === activeIndex;
   const isUpcoming = index === activeIndex + 1;
 
-  // Xử lý quiz ẩn từ ngay trong component để tối ưu hóa render
   const displayItem = useMemo(() => {
     if (isLearnMode && isActive && maskedIndex !== -1 && !quizAnswered) {
       return { 
@@ -74,7 +74,6 @@ const FocusLyricRow = React.memo(({
         Animated.timing(indicatorOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
     } else {
-      // Dừng các hiệu ứng đang chạy và đưa về trạng thái inactive nhanh để tránh lỗi tái sử dụng view của FlatList
       Animated.parallel([
         Animated.spring(scale, { toValue: 0.9, friction: 8, tension: 50, useNativeDriver: true }),
         Animated.timing(opacity, { toValue: isUpcoming ? 0.6 : 0.3, duration: 200, useNativeDriver: true }),
@@ -85,10 +84,8 @@ const FocusLyricRow = React.memo(({
 
   return (
     <View style={styles.lyricRowContainer}>
-      {/* THANH TRẠNG THÁI BÊN TRÁI */}
       <Animated.View style={[styles.activeIndicator, { opacity: indicatorOpacity }]} />
 
-      {/* NỘI DUNG CHỮ */}
       <Animated.View style={[
           styles.lyricContentWrapper,
           { 
@@ -103,43 +100,154 @@ const FocusLyricRow = React.memo(({
           onTokenPress={(token: any) => onTokenPress(token, item)}
           onLineDoubleTap={() => onLineDoubleTap(item)}
         />
-        
-        {/* Nút SRS được đưa ra dạng absolute cố định bên phải để không dịch chuyển vị trí của chữ */}
-        {isActive && item.tokens && item.tokens.length > 0 && (
-          <View style={styles.absoluteSrsContainer}>
-            <TouchableOpacity style={styles.addSrsBtn} onPress={() => onAddSrs(item, item.tokens[0])}>
-              <Text style={styles.addSrsText}>+ SRS</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </Animated.View>
     </View>
   );
 }, (prevProps, nextProps) => {
-  // Chỉ kích hoạt render lại khi có sự thay đổi trạng thái thực sự liên quan đến hàng này
+  if (prevProps.index !== nextProps.index) return false;
+  if (prevProps.item !== nextProps.item) return false;
+  if (prevProps.item.lineId !== nextProps.item.lineId) return false;
+
   const wasActive = prevProps.index === prevProps.activeIndex;
   const isNowActive = nextProps.index === nextProps.activeIndex;
+  if (wasActive !== isNowActive) return false;
+
   const wasUpcoming = prevProps.index === prevProps.activeIndex + 1;
   const isNowUpcoming = nextProps.index === nextProps.activeIndex + 1;
+  if (wasUpcoming !== isNowUpcoming) return false;
 
-  return (
-    wasActive === isNowActive &&
-    wasUpcoming === isNowUpcoming &&
-    prevProps.isLearnMode === nextProps.isLearnMode &&
-    prevProps.quizAnswered === nextProps.quizAnswered &&
-    prevProps.maskedIndex === nextProps.maskedIndex &&
-    prevProps.item.lineId === nextProps.item.lineId
-  );
+  if (prevProps.isLearnMode !== nextProps.isLearnMode) return false;
+  if (prevProps.quizAnswered !== nextProps.quizAnswered) return false;
+  if (prevProps.maskedIndex !== nextProps.maskedIndex) return false;
+
+  if (prevProps.onTokenPress !== nextProps.onTokenPress) return false;
+  if (prevProps.onLineDoubleTap !== nextProps.onLineDoubleTap) return false;
+
+  return true;
 });
 
 // ==========================================
-// MÀN HÌNH CHÍNH
+// COMPONENT 2: Isolated Rotating Disk
+// ==========================================
+interface RotatingCoverProps {
+  coverUrl?: string;
+  spin: any;
+}
+
+const RotatingCover = React.memo(({ coverUrl, spin }: RotatingCoverProps) => {
+  return (
+    <View style={styles.albumArtWrapper}>
+      {coverUrl ? (
+        <Animated.Image 
+          source={{ uri: coverUrl }} 
+          style={[styles.albumArtImage, { transform: [{ rotate: spin }] }]} 
+        />
+      ) : (
+        <View style={styles.albumArtPlaceholder} />
+      )}
+      <View style={styles.albumArtGlow} />
+    </View>
+  );
+});
+
+RotatingCover.displayName = 'RotatingCover';
+
+// ==========================================
+// COMPONENT 3: Isolated Lyric List Section
+// ==========================================
+interface LyricListSectionProps {
+  songLyrics: LyricLine[];
+  isLearnMode: boolean;
+  maskedIndex: number;
+  quizAnswered: boolean;
+  onActiveIndexChange: (index: number) => void;
+  onTokenPress: (token: LyricToken, line: LyricLine) => void;
+  onLineDoubleTap: (line: LyricLine) => void;
+}
+
+const LyricListSection = React.memo(({
+  songLyrics,
+  isLearnMode,
+  maskedIndex,
+  quizAnswered,
+  onActiveIndexChange,
+  onTokenPress,
+  onLineDoubleTap,
+}: LyricListSectionProps) => {
+  const playbackPosition = useAudioStore((state) => state.playbackPosition);
+  const flatListRef = useRef<FlatList>(null);
+
+  const activeIndex = useMemo(() => {
+    return songLyrics.findIndex((line) => playbackPosition >= line.startTime && playbackPosition <= line.endTime);
+  }, [songLyrics, playbackPosition]);
+
+  useEffect(() => {
+    onActiveIndexChange(activeIndex);
+  }, [activeIndex, onActiveIndexChange]);
+
+  useEffect(() => {
+    if (activeIndex !== -1 && flatListRef.current) {
+      flatListRef.current.scrollToIndex({ index: activeIndex, animated: true, viewPosition: 0.5 });
+    }
+  }, [activeIndex]);
+
+  const renderItem = useCallback(({ item, index }: { item: LyricLine, index: number }) => {
+    return (
+      <FocusLyricRow
+        item={item}
+        index={index}
+        activeIndex={activeIndex}
+        isLearnMode={isLearnMode}
+        maskedIndex={maskedIndex}
+        quizAnswered={quizAnswered}
+        onTokenPress={onTokenPress}
+        onLineDoubleTap={onLineDoubleTap}
+      />
+    );
+  }, [activeIndex, isLearnMode, maskedIndex, quizAnswered, onTokenPress, onLineDoubleTap]);
+
+  return (
+    <FlatList
+      ref={flatListRef}
+      data={songLyrics}
+      keyExtractor={(item, index) => item.lineId ? `${item.lineId}-${index}` : `line-${index}`}
+      contentContainerStyle={styles.listContent}
+      showsVerticalScrollIndicator={false}
+      
+      renderItem={renderItem}
+      initialNumToRender={10}
+      maxToRenderPerBatch={10}
+      windowSize={7}
+      removeClippedSubviews={true}
+      style={{ overflow: 'visible' }} 
+      extraData={{ activeIndex, isLearnMode, quizAnswered, maskedIndex }}
+      onScrollToIndexFailed={(info) => {   // 👈 Thêm fallback
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 });
+        }, 100);
+      }}
+    />
+  );
+}, (prev, next) => {
+  return (
+    prev.isLearnMode === next.isLearnMode &&
+    prev.quizAnswered === next.quizAnswered &&
+    prev.maskedIndex === next.maskedIndex &&
+    prev.songLyrics === next.songLyrics &&
+    prev.onTokenPress === next.onTokenPress &&
+    prev.onLineDoubleTap === next.onLineDoubleTap
+  );
+});
+
+LyricListSection.displayName = 'LyricListSection';
+
+// ==========================================
+// MÀN HÌNH CHÍNH (PLAYER SCREEN)
 // ==========================================
 export const PlayerScreen = () => {
   useAudioSync();
-
+  useTrackChangeListener();
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const playbackPosition = useAudioStore((state) => state.playbackPosition);
   const currentSong = useAudioStore((state) => state.currentSong);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const setLoopInterval = useAudioStore((state) => state.setLoopInterval);
@@ -154,11 +262,15 @@ export const PlayerScreen = () => {
   const [quizOptions, setQuizOptions] = useState<string[]>([]);
   const [correctAnswer, setCorrectAnswer] = useState('');
   const [maskedIndex, setMaskedIndex] = useState(-1);
+  const [lineAnalysis, setLineAnalysis] = useState<LineAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const flatListRef = useRef<FlatList>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
+
   const spinValue = useRef(new Animated.Value(0)).current;
 
-  // Animation Xoay Đĩa
+  const [lrcTranslation, setLrcTranslation] = useState('');const setIgnoreStateChange = useAudioStore((state) => state.setIgnoreStateChange);
+
   useEffect(() => {
     if (isPlaying) {
       Animated.loop(
@@ -179,43 +291,45 @@ export const PlayerScreen = () => {
   // Load Nhạc
   useEffect(() => {
     if (!currentSong) return;
-    void (async () => {
+    let cancelled = false;
+
+    const load = async () => {
       try {
-        await TrackPlayer.setMediaItems([{ 
-          id: currentSong._id, 
-          url: currentSong.audioUrl, 
-          title: currentSong.title, 
-          artist: currentSong.artist 
-        }]);
+        const playlist = useAudioStore.getState().playlist;
+        const startIndex = playlist.findIndex(s => s._id === currentSong._id);
+
+        if (startIndex !== -1 && playlist.length > 0) {
+          await loadAndPlaySong(playlist, startIndex);
+        } else {
+          await loadAndPlaySong([currentSong], 0);
+        }
+
         let lyrics: LyricLine[] = [];
-        if (currentSong.lyrics && currentSong.lyrics.length > 0) {
+        if (currentSong.lyrics?.length) {
           lyrics = currentSong.lyrics;
         } else if (currentSong.lrc) {
           lyrics = parseLrcText(currentSong.lrc);
         } else if (currentSong.lrcUrl) {
-          const response = await fetch(currentSong.lrcUrl);
-          const text = await response.text();
-          lyrics = parseLrcText(text);
+          try {
+            const response = await fetch(currentSong.lrcUrl);
+            const text = await response.text();
+            lyrics = parseLrcText(text);
+          } catch (err) {
+            console.error('Fetch LRC error:', err);
+          }
         }
-        setSongLyrics(lyrics);
-        await TrackPlayer.play();
-      } catch (error) { 
-        console.error('[Player] Load song error:', error); 
+
+        if (!cancelled) {
+          setSongLyrics(lyrics);
+        }
+      } catch (error) {
+        console.error('[Player] Load song error:', error);
       }
-    })();
+    };
+
+    load();
+    return () => { cancelled = true; };
   }, [currentSong]);
-
-  // VỊ TRÍ ACTIVE
-  const activeIndex = useMemo(() => {
-    return songLyrics.findIndex((line) => playbackPosition >= line.startTime && playbackPosition <= line.endTime);
-  }, [songLyrics, playbackPosition]);
-
-  // CUỘN TỰ ĐỘNG KHÔNG TRỄ
-  useEffect(() => {
-    if (activeIndex !== -1 && flatListRef.current) {
-      flatListRef.current.scrollToIndex({ index: activeIndex, animated: true, viewPosition: 0.5 });
-    }
-  }, [activeIndex]);
 
   // Logic Quiz
   useEffect(() => {
@@ -235,15 +349,38 @@ export const PlayerScreen = () => {
   }, [activeIndex, isLearnMode, setIsPlaying, songLyrics]);
 
   // Handlers
-  const handleTokenPress = useCallback((token: LyricToken, line: LyricLine) => {
-    setSelectedToken(token); 
-    setModalVisible(true); 
-    setLoopInterval({ start: line.startTime, end: line.endTime });
-  }, [setLoopInterval]);
-
-  const handleLineDoubleTap = useCallback((line: LyricLine) => { 
-    TrackPlayer.seekTo(line.startTime); 
+  const handleActiveIndexChange = useCallback((index: number) => {
+    setActiveIndex(index);
   }, []);
+
+  const handleTokenPress = useCallback((token: LyricToken, line: LyricLine) => {
+    setSelectedToken(token);
+    setModalVisible(true);
+    setLineAnalysis(null);
+    setIsAnalyzing(true);
+
+    setLrcTranslation(line.translation || '');
+
+    const lineText = line.tokens.map(t => t.word).join('');
+    console.log('🔎 Phân tích dòng:', lineText);
+
+    analyzeLyricLine(lineText, token.word)
+      .then((result) => {
+        console.log('✅ AI trả về:', JSON.stringify(result));
+        setLineAnalysis(result);
+      })
+      .catch(err => {
+        console.error('❌ AI analysis error:', err);
+        Alert.alert('Lỗi', `Không thể phân tích: ${err.message}`);
+      })
+      .finally(() => setIsAnalyzing(false));
+  }, []);
+
+  const handleLineDoubleTap = useCallback((line: LyricLine) => {
+    setIgnoreStateChange(true);
+    TrackPlayer.seekTo(line.startTime);
+    setTimeout(() => setIgnoreStateChange(false), 800);
+  }, [setIgnoreStateChange]);
 
   const handleCloseModal = useCallback(async () => {
     setModalVisible(false); 
@@ -271,85 +408,74 @@ export const PlayerScreen = () => {
   }, [activeIndex, correctAnswer, setIsPlaying, songLyrics]);
 
   const handlePlayPause = useCallback(async () => {
-    if (isPlaying) { 
-      await TrackPlayer.pause(); 
-      setIsPlaying(false); 
-      return; 
+    try {
+      const currentPlaying = useAudioStore.getState().isPlaying;
+      if (currentPlaying) {
+        await TrackPlayer.pause();
+        setIsPlaying(false);  // ✅ cập nhật thủ công vì sự kiện paused không bao giờ tới
+      } else {
+        await TrackPlayer.play();
+        setIsPlaying(true);   // ✅ cập nhật thủ công (phòng khi sự kiện ready cũng không tới ngay)
+      }
+    } catch (e) {
+      console.error('PlayPause error:', e);
     }
-    await TrackPlayer.play(); 
-    setIsPlaying(true);
-  }, [isPlaying, setIsPlaying]);
+  }, [setIsPlaying]);
 
-  const handleAddToSRS = useCallback((line: LyricLine, token: LyricToken) => {
-    if (!currentSong) return;
+  const handleAddWordToSRS = useCallback((wordData: WordBreakdownItem) => {
+    if (!currentSong || !lineAnalysis) return;
     const newCard: Flashcard = {
-      _id: `card_${Date.now()}`, 
-      word: token.word, 
-      reading: token.romaji || token.word, 
-      meaning: "Từ vựng bài hát",
-      jlptLevel: 'N3', 
-      snippetData: { 
-        songId: currentSong._id, 
-        startTime: line.startTime, 
-        endTime: line.endTime, 
-        contextSentence: line.tokens.map(i => i.word).join('') 
+      _id: `card_${Date.now()}`,
+      word: wordData.word,
+      reading: wordData.reading,
+      meaning: wordData.meaningVi,
+      jlptLevel: wordData.jlptLevel || 'N3',
+      snippetData: {
+        songId: currentSong._id,
+        startTime: 0,
+        endTime: 0,
+        contextSentence: lineAnalysis.fullLine,
       },
       srs: { repetition: 0, interval: 1, easeFactor: 2.5, nextReviewDate: new Date().toISOString() },
     };
-    addFlashcard([...currentDeck, newCard]);
-  }, [addFlashcard, currentDeck, currentSong]);
+    useFlashcardStore.getState().addCard(newCard); // ✅ dùng store action
+  }, [currentSong, lineAnalysis]);
 
-  const renderItem = useCallback(({ item, index }: { item: LyricLine, index: number }) => {
-    return (
-      <FocusLyricRow
-        item={item}
-        index={index}
-        activeIndex={activeIndex}
-        isLearnMode={isLearnMode}
-        maskedIndex={maskedIndex}
-        quizAnswered={quizAnswered}
-        onTokenPress={handleTokenPress}
-        onLineDoubleTap={handleLineDoubleTap}
-        onAddSrs={handleAddToSRS}
-      />
-    );
-  }, [activeIndex, isLearnMode, maskedIndex, quizAnswered, handleTokenPress, handleLineDoubleTap, handleAddToSRS]);
+  const handleAddAllWordsToSRS = useCallback(() => {
+    if (!lineAnalysis || !currentSong) return;
+    lineAnalysis.wordBreakdown.forEach((wordData) => {
+      handleAddWordToSRS(wordData); // sử dụng hàm đã có
+    });
+  }, [lineAnalysis, currentSong, handleAddWordToSRS]);
+
+  type WordBreakdownItem = {
+    word: string;
+    reading: string;
+    meaningVi: string;
+    jlptLevel?: string;
+  };
 
   return (
     <View style={styles.container}>
-      <BlurView style={StyleSheet.absoluteFill} blurType="dark" blurAmount={50} tint="dark" />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0D0D10' }]} />
       
-      {/* KHỐI ALBUM */}
       <View style={styles.albumArtSection}>
-        <View style={styles.albumArtWrapper}>
-          {currentSong?.coverUrl ? (
-            <Animated.Image source={{ uri: currentSong.coverUrl }} style={[styles.albumArtImage, { transform: [{ rotate: spin }] }]} />
-          ) : (
-            <View style={styles.albumArtPlaceholder} />
-          )}
-          <View style={styles.albumArtGlow} />
-        </View>
+        <RotatingCover coverUrl={currentSong?.coverUrl} spin={spin} />
         <View style={styles.songInfoContainer}>
           <Text style={styles.songTitle} numberOfLines={1}>{currentSong?.title}</Text>
           <Text style={styles.songArtist} numberOfLines={1}>{currentSong?.artist}</Text>
         </View>
       </View>
 
-      {/* KHỐI LYRICS VÀ ĐIỀU KHIỂN */}
       <View style={styles.contentSection}>
-        <FlatList
-          ref={flatListRef}
-          data={songLyrics}
-          keyExtractor={(item, index) => item.lineId || `line-${index}`}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          getItemLayout={(_, index) => ({ length: 115, offset: 115 * index, index })}
-          renderItem={renderItem}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={7}
-          removeClippedSubviews={false}
-          style={{ overflow: 'visible' }} 
+        <LyricListSection
+          songLyrics={songLyrics}
+          isLearnMode={isLearnMode}
+          maskedIndex={maskedIndex}
+          quizAnswered={quizAnswered}
+          onActiveIndexChange={handleActiveIndexChange}
+          onTokenPress={handleTokenPress}
+          onLineDoubleTap={handleLineDoubleTap}
         />
 
         {isLearnMode && activeIndex !== -1 && !quizAnswered && quizOptions.length > 0 && (
@@ -368,28 +494,59 @@ export const PlayerScreen = () => {
         <View style={styles.playerControls}>
           <PlayerProgressBar duration={currentSong?.duration || 210} />
           <View style={styles.controlButtonsRow}>
-            <TouchableOpacity style={styles.sideControlBtn}><Ionicons name="play-back" size={26} color="#A0A0A0" /></TouchableOpacity>
-            
+            <TouchableOpacity 
+              style={styles.sideControlBtn} 
+              onPress={async () => {
+                try {
+                  await TrackPlayer.skipToPrevious();
+                } catch (e) {
+                  console.error('Previous error:', e);
+                }
+              }}
+            >
+              <Ionicons name="play-back" size={26} color="#A0A0A0" />
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.playPauseBtn} onPress={handlePlayPause}>
               <Ionicons name={isPlaying ? "pause" : "play"} size={30} color="#0A0A0C" />
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.sideControlBtn}><Ionicons name="play-forward" size={26} color="#A0A0A0" /></TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.sideControlBtn} 
+              onPress={async () => {
+                try {
+                  await TrackPlayer.skipToNext();
+                } catch (e) {
+                  console.error('Next error:', e);
+                }
+              }}
+            >
+              <Ionicons name="play-forward" size={26} color="#A0A0A0" />
+            </TouchableOpacity>
           </View>
           <TouchableOpacity style={[styles.learnBtn, isLearnMode && styles.learnBtnActive]} onPress={() => setIsLearnMode(!isLearnMode)}>
-            <Ionicons name={isLearnMode ? "brain" : "school-outline"} size={16} color={isLearnMode ? "#0A0A0C" : "#A0A0A0"} style={{ marginRight: 6 }} />
+            <Ionicons name={isLearnMode ? "bulb" : "school-outline"} size={16} color={isLearnMode ? "#0A0A0C" : "#A0A0A0"} style={{ marginRight: 6 }} />
             <Text style={[styles.learnBtnText, isLearnMode && { color: '#0A0A0C' }]}>{isLearnMode ? 'Chế độ học: BẬT' : 'Học Tập'}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <DictionaryModal visible={isModalVisible} token={selectedToken} onClose={handleCloseModal} />
+      <DictionaryModal
+        visible={isModalVisible}
+        token={selectedToken}
+        onClose={handleCloseModal}
+        lineAnalysis={lineAnalysis}
+        isAnalyzing={isAnalyzing}
+        lrcTranslation={lrcTranslation} 
+        onAddWordToSRS={handleAddWordToSRS}
+        onAddAllWordsToSRS={handleAddAllWordsToSRS}
+      />
     </View>
   );
 };
 
 // ==========================================
-// STYLES
+// STYLES (giữ nguyên như cũ)
 // ==========================================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0C' },
@@ -411,7 +568,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 115, 
+    minHeight: 115, 
     width: '100%',
     position: 'relative',
     overflow: 'visible',
@@ -437,27 +594,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3,
-    paddingHorizontal: 48, // Khoảng trống an toàn ở 2 lề để không đè vào thanh LED hoặc nút SRS
+    paddingHorizontal: 48,
   },
 
-  absoluteSrsContainer: {
-    position: 'absolute',
-    right: 12, // Cố định ở góc bên phải
-    height: '100%',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  
-  addSrsBtn: { 
-    backgroundColor: 'rgba(29, 185, 84, 0.15)', 
-    borderWidth: 1, 
-    borderColor: '#1DB954', 
-    borderRadius: 20, 
-    paddingVertical: 6, 
-    paddingHorizontal: 12 
-  },
-  addSrsText: { color: '#1DB954', fontSize: 11, fontWeight: '800' },
-  
   playerControls: { backgroundColor: 'rgba(0, 0, 0, 0.4)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 35 },
   controlButtonsRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 16 },
   

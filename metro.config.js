@@ -1,27 +1,14 @@
 const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
 
+// 1. Khởi tạo cấu hình mặc định chuẩn của Expo SDK 56
 const config = getDefaultConfig(__dirname);
 
-config.resolver.platforms = ['web', 'ios', 'android', 'native'];
-
-config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (moduleName === '@rntp/player') {
-    if (platform === 'web') {
-      return {
-        filePath: path.resolve(__dirname, '@rntp/player.web.ts'),
-        type: 'sourceFile',
-      };
-    }
-    return context.resolveRequest(context, '@rntp/player', platform);
-  }
-  if (moduleName === 'react-native-safe-area-context') {
-    return {
-      filePath: path.resolve(__dirname, 'react-native-safe-area-context.web.tsx'),
-      type: 'sourceFile',
-    };
-  }
-  return context.resolveRequest(context, moduleName, platform);
+// 2. Kế thừa và thêm cấu hình extraNodeModules hiện tại của bạn vào
+config.resolver.extraNodeModules = {
+  ...config.resolver.extraNodeModules,
+  '@react-native-async-storage/async-storage': require.resolve(
+    '@react-native-async-storage/async-storage'
+  ),
 };
 
 module.exports = config;

@@ -1,3 +1,4 @@
+// src/utils/lrcParser.ts
 import type { LyricLine, LyricToken } from '../types';
 
 const LRC_TIMESTAMP_REGEX = /^\[(\d{2}):(\d{2}(?:\.\d+)?)\]\s*(.*)$/;

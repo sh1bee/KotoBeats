@@ -1,0 +1,25 @@
+{
+  "build": {
+    "development": {
+      "android": {
+        "workflow": "managed",
+        "gradleCommand": ":app:assembleDebug",
+        "buildType": "apk"
+      }
+    },
+    "preview": {
+      "android": {
+        "workflow": "managed",
+        "gradleCommand": ":app:assemblePreview",
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "android": {
+        "workflow": "managed",
+        "gradleCommand": ":app:assembleRelease",
+        "buildType": "aab"
+      }
+    }
+  }
+}

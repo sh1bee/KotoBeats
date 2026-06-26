@@ -1,11 +1,17 @@
+// src/screens/ProfileScreen.tsx
 import React from 'react';
 import {
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFlashcardStore } from '../store/flashcardStore';
+import { removeUser, getUser } from '../services/userStorage';
+import { useEffect, useState } from 'react';
+import type { Flashcard } from '../types';
 
 const StatCard: React.FC<{ icon: any; value: string; label: string }> = ({ icon, value, label }) => (
   <View style={styles.statCard}>
@@ -25,20 +31,52 @@ const SettingItem: React.FC<{ icon: any; label: string; onPress?: () => void }> 
   </TouchableOpacity>
 );
 
-export const ProfileScreen = () => {
+export const ProfileScreen = ({ onLogout }: { onLogout: () => void }) => {
+  const deck = useFlashcardStore((state) => state.deck);
+  const userId = useFlashcardStore((state) => state.userId);
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    // Lấy tên hiển thị từ storage
+    getUser().then((user) => {
+      if (user?.displayName) setDisplayName(user.displayName);
+    });
+  }, []);
+
+  const handleLogout = () => {
+    Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', [
+      { text: 'Huỷ' },
+      {
+        text: 'Đăng xuất',
+        onPress: async () => {
+          await removeUser();
+          useFlashcardStore.getState().setUserId(null);
+          useFlashcardStore.getState().setDeck([]);
+          onLogout();
+        },
+      },
+    ]);
+  };
+
+  const allCards = deck.length;
+  const studiedCards = deck.filter((c: Flashcard) => c.srs.repetition > 0).length;
+  const estimatedHours = Math.floor(studiedCards * 0.5); // mỗi thẻ ~30 phút học
+
   return (
     <View style={styles.container}>
       <View style={styles.profileHeader}>
         <View style={styles.avatarLarge}>
-          <Text style={styles.avatarLargeText}>D</Text>
+          <Text style={styles.avatarLargeText}>
+            {displayName ? displayName.charAt(0).toUpperCase() : userId ? userId.charAt(0) : '?'}
+          </Text>
         </View>
-        <Text style={styles.userName}>Đạt</Text>
-        <Text style={styles.userEmail}>dat.kotobeat@gmail.com</Text>
+        <Text style={styles.userName}>{displayName || userId || 'Người dùng'}</Text>
+        {displayName && <Text style={styles.userEmail}>{userId}</Text>}
       </View>
 
       <View style={styles.statsGrid}>
-        <StatCard icon="flash" value="127" label="Tổng từ vựng" />
-        <StatCard icon="time" value="42h" label="Giờ nghe Nhật" />
+        <StatCard icon="flash" value={String(allCards)} label="Tổng từ vựng" />
+        <StatCard icon="time" value={`${estimatedHours}h`} label="Giờ học ước tính" />
         <StatCard icon="star" value="N3" label="Cấp độ hiện tại" />
       </View>
 
@@ -48,7 +86,13 @@ export const ProfileScreen = () => {
         <SettingItem icon="notifications" label="Thông báo" />
         <SettingItem icon="help-circle" label="Hỗ trợ" />
         <SettingItem icon="information-circle" label="Về KotoBeat" />
-        <SettingItem icon="log-out" label="Đăng xuất" />
+        <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
+          <View style={styles.settingItemLeft}>
+            <Ionicons name="log-out" size={20} color="#A0A0A0" />
+            <Text style={styles.settingLabel}>Đăng xuất</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#555" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.footer}>

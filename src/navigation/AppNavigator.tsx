@@ -1,29 +1,28 @@
+// src/navigation/AppNavigator.tsx
+import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { HomeScreen } from '../screens/HomeScreen';
 import { PlayerScreen } from '../screens/PlayerScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { LoginScreen } from '../screens/LoginScreen';
+import { getUser, removeUser } from '../services/userStorage';
+import { useFlashcardStore } from '../store/flashcardStore';
 
 const Tab = createBottomTabNavigator();
 
+// Floating Tab Bar giữ nguyên style cũ (đã hoạt động)
 const FloatingTabBar = ({ state, descriptors, navigation }: any) => {
   return (
-    <BlurView blurType="dark" blurAmount={20} tint="dark" style={styles.tabBarBlur}>
+    <BlurView tint="dark" intensity={20} style={styles.tabBarBlur}>
       <View style={styles.tabBarContainer}>
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
-          const label =
-            options.tabBarLabel !== undefined
-              ? options.tabBarLabel
-              : options.title !== undefined
-                ? options.title
-                : route.name;
-
+          const label = options.tabBarLabel ?? options.title ?? route.name;
           const isFocused = state.index === index;
 
           const onPress = () => {
@@ -32,32 +31,22 @@ const FloatingTabBar = ({ state, descriptors, navigation }: any) => {
               target: route.key,
               canPreventDefault: true,
             });
-
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name, route.params);
             }
           };
 
-          const iconName = {
+          const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
             Home: isFocused ? 'home' : 'home-outline',
             Player: isFocused ? 'musical-notes' : 'musical-notes-outline',
             Profile: isFocused ? 'person' : 'person-outline',
-          }[route.name] as keyof typeof Ionicons;
+          };
+          const iconName = icons[route.name] || 'help-circle';
 
           return (
-            <TouchableOpacity
-              key={route.key}
-              onPress={onPress}
-              style={styles.tabButton}
-            >
-              <Ionicons
-                name={iconName}
-                size={24}
-                color={isFocused ? '#1DB954' : '#A0A0A0'}
-              />
-              <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
-                {label}
-              </Text>
+            <TouchableOpacity key={route.key} onPress={onPress} style={styles.tabButton}>
+              <Ionicons name={iconName} size={24} color={isFocused ? '#1DB954' : '#A0A0A0'} />
+              <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>{label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -66,31 +55,64 @@ const FloatingTabBar = ({ state, descriptors, navigation }: any) => {
   );
 };
 
+// Điều hướng chính khi đã đăng nhập
+const MainTabs = ({ onLogout }: { onLogout: () => void }) => (
+  <Tab.Navigator
+    tabBar={(props) => <FloatingTabBar {...props} />}
+    screenOptions={{ headerShown: false }}
+  >
+    <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Trang chủ' }} />
+    <Tab.Screen name="Player" component={PlayerScreen} options={{ tabBarLabel: 'Nghe nhạc' }} />
+    <Tab.Screen
+      name="Profile"
+      options={{ tabBarLabel: 'Tài khoản' }}
+    >
+      {() => <ProfileScreen onLogout={onLogout} />}
+    </Tab.Screen>
+  </Tab.Navigator>
+);
+
+// Component gốc của App
 export const AppNavigator = () => {
+  const [user, setUser] = useState<{ phone: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const setUserId = useFlashcardStore((state) => state.setUserId);
+
+  useEffect(() => {
+    (async () => {
+      const stored = await getUser();
+      if (stored) {
+        setUser(stored);
+        setUserId(stored.phone);
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  const handleLoginSuccess = () => {
+    getUser().then((stored) => {
+      if (stored) {
+        setUser(stored);
+        setUserId(stored.phone);
+      }
+    });
+  };
+
+  const handleLogout = async () => {
+    await removeUser();
+    setUserId(null);
+    setUser(null);
+  };
+
+  if (loading) return null;
+
   return (
     <NavigationContainer theme={DarkTheme}>
-      <Tab.Navigator
-        tabBar={(props) => <FloatingTabBar {...props} />}
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Tab.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ tabBarLabel: 'Trang chủ' }}
-        />
-        <Tab.Screen
-          name="Player"
-          component={PlayerScreen}
-          options={{ tabBarLabel: 'Nghe nhạc' }}
-        />
-        <Tab.Screen
-          name="Profile"
-          component={ProfileScreen}
-          options={{ tabBarLabel: 'Tài khoản' }}
-        />
-      </Tab.Navigator>
+      {user ? (
+        <MainTabs onLogout={handleLogout} />
+      ) : (
+        <LoginScreen onLogin={handleLoginSuccess} />
+      )}
     </NavigationContainer>
   );
 };

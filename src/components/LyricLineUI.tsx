@@ -1,3 +1,4 @@
+// src/components/LyricLineUI.tsx
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
@@ -78,7 +79,7 @@ LyricLineUI.displayName = 'LyricLineUI';
 
 const styles = StyleSheet.create({
   lineContainer: {
-    marginVertical: 16,
+    marginVertical: 20,
     paddingHorizontal: 20,
     opacity: 0.4,
     backgroundColor: 'transparent', // Đảm bảo trong suốt hoàn toàn

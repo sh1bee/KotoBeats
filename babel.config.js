@@ -4,7 +4,7 @@ module.exports = function(api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
-      'react-native-reanimated/plugin', // Đảm bảo dòng này nằm cuối cùng trong danh sách plugins
+      //'react-native-reanimated/plugin', // Đảm bảo dòng này nằm cuối cùng trong danh sách plugins
     ],
   };
 };

@@ -1,3 +1,4 @@
+// src/types/index.ts
 export interface LyricToken {
   word: string;
   base: string;

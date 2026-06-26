@@ -4,62 +4,68 @@ Japanese language learning powered by music — time-synced lyrics and audio-sni
 
 ## Tech Stack
 
-- **Expo** (custom dev client required)
+- **Expo SDK 56** (Android dev client required)
 - **react-native-track-player** — background audio, lock screen controls, precise seeking
 - **expo-file-system** — local audio cache
-- **Zustand** — global playback state (Phase 2+)
-- **Firebase** — Firestore + Storage (upcoming)
+- **Zustand** — global playback state
+- **Firebase** — Firestore + Storage + Auth
 
-## Phase 1: Audio Core & Local Caching
-
-Phase 1 delivers:
-
-- `track-player-service.ts` — headless playback service for remote controls
-- `src/services/audioCache.ts` — downloads remote audio to `file://` document cache
-- `src/services/audioPlayer.ts` — resolves cache, then loads local URI into Track Player
-
-### Prerequisites
-
-- Node.js **≥ 20.19.4** (recommended for Expo SDK 56)
-- Xcode (iOS) and/or Android Studio (Android)
-- **Expo Go will not work** — native modules require a dev build
-
-### Install & Run
+## Setup
 
 ```bash
+# 1. Cài đặt dependencies
 npm install
 
-# Build and run a dev client (pick one)
-npx expo run:ios
-npx expo run:android
+# 2. Tạo file .env từ .env.example
+cp .env.example .env
 
-# Or start Metro after a dev build is installed
-npm start
+# 3. Build và chạy Android
+npm run android
+# hoặc: npx expo run:android
 ```
 
-### How Caching Works
+## Firebase Setup
 
-1. `resolveCachedAudioUri(songId, audioUrl)` checks `{document}/audio-cache/{songId}.mp3`
-2. If missing, downloads from Firebase Storage (or any HTTPS URL) via `expo-file-system`
-3. Track Player receives the local `file://` path for zero-lag playback and seeking
+1. Tạo dự án Firebase tại https://console.firebase.google.com
+2. Thêm app Android với package name: `com.kotobeat.app`
+3. Tải file serviceAccountKey.json và đặt vào root project
+4. Bật Firestore và Storage
+5. Cập nhật .env với Firebase config
 
-### Phase 1 Test Screen
+## Upload Songs Script
 
-The default `App.tsx` exposes:
+```bash
+node uploadSongs.js
+```
 
-- **Preload to Cache** — download without playing
-- **Play Full Song** — cache + play from local file
-- **Play Snippet** — seek to lyric `startTime` (loop logic arrives in Phase 3)
+Script tự động chuyển Google Drive links thành streaming links và upload lên Firestore.
 
-Update `src/data/mockSong.ts` with your Firebase Storage `audioUrl` when ready.
+## Audio Caching
 
-## Roadmap
+Hệ thống tự động cache audio xuống thiết bị để:
+- Playback không lag
+- Seek nhanh
+- Hỗ trợ offline
 
-| Phase | Scope |
-|-------|--------|
-| **1** | Audio core + local caching ✅ |
-| **2** | Zustand playback sync + tokenized lyrics UI |
-| **3** | Smart loop + Jisho dictionary |
-| **4** | Swipe SRS flashcards |
+## Phase Status
 
-See `README.blueprint.md` for full architecture and Firestore schemas.
+| Phase | Status | Description |
+|-------|--------|-------------|
+| **1** | ✅ | UI + Mock logic |
+| **2** | ✅ | Firebase config + TrackPlayer native |
+| **3** | ✅ | Audio caching + Loop playback |
+| **4** | ✅ | Flashcards + Sync SRS data |
+| **5** | ✅ | Auth + Profile stats |
+
+## Android Build (EAS)
+
+```bash
+# Cài đặt EAS CLI
+npm install -g eas-cli
+
+# Build development
+eas build --platform android --profile development
+
+# Build production
+eas build --platform android --profile production
+```

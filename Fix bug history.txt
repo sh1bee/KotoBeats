@@ -1,0 +1,73 @@
+Bug 1: `Unable to resolve "@rntp/player" from "src/services/trackPlayerService.ts"
+  3 |   Event,
+  4 |   PlayerCommand,
+> 5 | } from '@rntp/player';
+    |         ^
+  6 |
+  7 | export const PlaybackService = async (): Promise<void> => {
+  8 |   if (Platform.OS === 'web') return;
+
+Import stack:
+
+ src/services/trackPlayerService.ts
+ | import "@rntp/player"
+
+ App.tsx
+ | import "./src/services/trackPlayerService"
+
+ index.ts
+ | import "./App"
+
+ 
+ | import "./index.ts"`
+Fix: metro.config.js: Loại bỏ việc redirect @rntp/player sang react-native-track-player không tồn tại
+@rntp/player.d.ts: Cập nhật types cho đúng API của @rntp/player v5.6.0
+@rntp/player.web.ts: Sửa giá trị enum PlayerCommand và thêm các event thiếu
+---
+1. Triệu chứng (Symptom)
+Các biến môi trường có tiền tố EXPO_PUBLIC_ (như EXPO_PUBLIC_FIREBASE_API_KEY) trong file .env đều trả về undefined (❌ BỊ RỖNG).
+
+Kéo theo hiệu ứng domino gây lỗi khởi tạo Firebase:
+
+Lỗi Auth: Firebase: Error (auth/invalid-api-key).
+
+Lỗi Firestore: Expected first argument to collection() to be a CollectionReference... do Instance của Firebase App không hợp lệ.
+
+Dù đã chạy lệnh xóa cache npx expo start -c nhiều lần, kiểm tra kỹ vị trí và cú pháp file .env nhưng ứng dụng vẫn không nhận biến.
+
+2. Nguyên nhân gốc rễ (Root Cause)
+Xung đột cấu hình Metro Bundler: File metro.config.js ở thư mục gốc của dự án sử dụng cấu hình mặc định của React Native thuần CLI (@react-native/metro-config) thay vì của Expo (expo/metro-config).
+
+Cơ chế lỗi: Tính năng tự động quét và nạp các biến môi trường EXPO_PUBLIC_ từ file .env vào process.env là tính năng độc quyền nằm trong bộ biến đổi (transformer) của thư viện expo/metro-config. Khi dùng cấu hình của RN thuần, trình đóng gói hoàn toàn bỏ qua file .env, dẫn đến việc các biến bị trống.
+
+3. Giải pháp khắc phục (Resolution)
+Bước 1: Cập nhật lại file metro.config.js để chuyển sang dùng trình đóng gói chuẩn của Expo SDK 56, đồng thời giữ lại phần cấu hình tùy chỉnh cho Async Storage.
+
+Code sau khi sửa:
+
+JavaScript
+const { getDefaultConfig } = require('expo/metro-config');
+
+// Khởi tạo cấu hình mặc định chuẩn của Expo
+const config = getDefaultConfig(__dirname);
+
+// Giữ lại cấu hình tùy chỉnh extraNodeModules cho async-storage
+config.resolver.extraNodeModules = {
+  ...config.resolver.extraNodeModules,
+  '@react-native-async-storage/async-storage': require.resolve(
+    '@react-native-async-storage/async-storage'
+  ),
+};
+
+module.exports = config;
+
+* **Bước 2 (Tối ưu hóa kèm theo):** Loại bỏ mảng `plugins` bị khai báo trùng lặp (duplicate) trong file `app.json` để nhường quyền quản lý hoàn toàn cho file động `app.config.js`, tránh xung đột khi build native app sau này.
+* **Bước 3:** Chạy lệnh `npx expo start -c` để xóa toàn bộ cache cũ của Metro Bundler và buộc hệ thống nạp lại cấu hình mới.
+
+## 4. Kết quả (Result)
+* Log debug hiển thị: `API_KEY: ✅ Đã nhận` và `PROJECT_ID: ✅ Đã nhận`.
+* Firebase khởi tạo thành công tất cả các dịch vụ (Auth, Firestore, Storage).
+* Ứng dụng *KotoBeat* fetch dữ liệu bài hát từ Firestore mượt mà bình thường.
+
+## 💡 Bài học rút ra (Lesson Learned)
+* Trong dự án sử dụng **Expo**, khi copy các đoạn code cấu hình từ tài liệu hướng dẫn (Documentation) của các thư viện bên thứ ba, phải đặc biệt lưu ý xem hướng dẫn đó dành cho **React Native CLI** hay **Expo**. Luôn ưu tiên sử dụng wrapper của Expo (ví dụ: `expo/metro-config`) để không làm mất các tính năng built-in của hệ sinh thái Expo.

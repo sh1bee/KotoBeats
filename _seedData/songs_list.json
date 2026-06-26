@@ -124,5 +124,23 @@
     "coverUrl": "https://drive.google.com/file/d/1frRInR4MvnBplV6kWh4ft6OyKDfVBK78/view?usp=sharing",
     "duration": 272,
     "lrcFileName": "転がる岩、君に朝が降る.lrc"
+  },
+  {
+    "_id": "song_016",
+    "title": "ワタシダケユウレイ",
+    "artist": "SICK HACK",
+    "audioUrl": "https://drive.google.com/file/d/1GM446DByv9sem-AfSCaCuKVkimUSjumb/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1frRInR4MvnBplV6kWh4ft6OyKDfVBK78/view?usp=sharing",
+    "duration": 303,
+    "lrcFileName": "ワタシダケユウレイ.lrc"
+  },
+  {
+    "_id": "song_017",
+    "title": "VOID (空の箱)",
+    "artist": "Nina Iseri, Momoka Kawaragi",
+    "audioUrl": "https://drive.google.com/file/d/1ENrVXqKzdoKocHx-LG7eAZk9LXobOJwT/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/16-nzyWU3IlXQKV-Holk70d_6vrdO9_GG/view?usp=sharing",
+    "duration": 185,
+    "lrcFileName": "VOID (空の箱).lrc"
   }
 ]

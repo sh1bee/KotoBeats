@@ -43,6 +43,7 @@ yarn-error.*
 .env
 
 serviceAccountKey.json
+src/services/apiKeys.ts
 
 # IDE
 .idea/

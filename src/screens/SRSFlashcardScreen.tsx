@@ -1,53 +1,15 @@
-import React, { useEffect } from 'react';
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { TinderCard } from '../components/TinderCard';
 import { useAudioStore } from '../store/audioStore';
 import { useFlashcardStore } from '../store/flashcardStore';
+import { fetchFlashcardsForUser, updateFlashcardSRS } from '../services/firebase/dbService';
 import type { Flashcard } from '../types';
 import TrackPlayer from '@rntp/player';
 
-const mockDeck: Flashcard[] = [
-  {
-    _id: 'card_01',
-    word: '世界',
-    reading: 'せかい',
-    meaning: 'Thế giới',
-    jlptLevel: 'N4',
-    snippetData: {
-      songId: 'song_test',
-      startTime: 19.65,
-      endTime: 24.5,
-      contextSentence: '出来れば世界を僕は塗り変えたい',
-    },
-    srs: {
-      repetition: 0,
-      interval: 1,
-      easeFactor: 2.5,
-      nextReviewDate: '2026-06-21T00:00:00Z',
-    },
-  },
-  {
-    _id: 'card_02',
-    word: '戦争',
-    reading: 'せんそう',
-    meaning: 'Chiến tranh',
-    jlptLevel: 'N3',
-    snippetData: {
-      songId: 'song_test',
-      startTime: 26.0,
-      endTime: 31.0,
-      contextSentence: '戦争をなくすような大逸れたことじゃない',
-    },
-    srs: {
-      repetition: 0,
-      interval: 1,
-      easeFactor: 2.5,
-      nextReviewDate: '2026-06-21T00:00:00Z',
-    },
-  },
-];
+const CURRENT_USER_ID = 'demo_user';
 
 export const SRSFlashcardScreen = () => {
   const deck = useFlashcardStore((state) => state.deck);
@@ -55,14 +17,33 @@ export const SRSFlashcardScreen = () => {
   const processSwipe = useFlashcardStore((state) => state.processSwipe);
   const setLoopInterval = useAudioStore((state) => state.setLoopInterval);
 
-  useEffect(() => {
-    setDeck(mockDeck);
+  const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
     return () => {
       setLoopInterval(null);
       TrackPlayer.pause();
     };
-  }, [setDeck, setLoopInterval]);
+  }, [setLoopInterval]);
+
+  useEffect(() => {
+    const loadFlashcards = async () => {
+      setIsLoading(true);
+      try {
+        const cards = await fetchFlashcardsForUser(CURRENT_USER_ID);
+        const dueCards = cards.filter(
+          (card) => new Date(card.srs.nextReviewDate) <= new Date()
+        );
+        setDeck(dueCards.length > 0 ? dueCards : []);
+      } catch (error) {
+        console.error('[SRS] Failed to load flashcards:', error);
+        setDeck([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadFlashcards();
+  }, [setDeck]);
 
   useEffect(() => {
     const topCard = deck[0];
@@ -83,9 +64,14 @@ export const SRSFlashcardScreen = () => {
     TrackPlayer.pause();
   }, [deck, setLoopInterval]);
 
-  const loadMockDeck = () => {
-    setDeck(mockDeck);
-  };
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#1DB954" />
+        <Text style={styles.loadingText}>Đang tải thẻ SRS...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -103,11 +89,6 @@ export const SRSFlashcardScreen = () => {
             <Text style={styles.subDoneText}>
               Hệ thống Spaced Repetition sẽ hẹn lịch các thẻ tiếp theo cho bạn.
             </Text>
-
-            <TouchableOpacity style={styles.reloadBtn} onPress={loadMockDeck}>
-              <Ionicons name="refresh" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.reloadBtnText}>Luyện tập lại bài học</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           [...deck].reverse().map((card, index) => {
@@ -123,6 +104,7 @@ export const SRSFlashcardScreen = () => {
                   card={card}
                   onSwiped={(isRemembered) => {
                     processSwipe(card._id, isRemembered);
+                    void updateFlashcardSRS(CURRENT_USER_ID, { ...card, srs: { ...card.srs, repetition: card.srs.repetition + (isRemembered ? 1 : 0) } });
                   }}
                 />
               </View>
@@ -139,6 +121,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0E0E12',
     alignItems: 'center',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#A0A0A0',
+    marginTop: 16,
+    fontSize: 16,
   },
   headerRow: {
     flexDirection: 'row',
@@ -173,10 +164,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333',
   },
-  trophyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
   doneText: {
     color: '#FFF',
     fontSize: 18,
@@ -190,18 +177,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
-  },
-  reloadBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1DB954',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-  },
-  reloadBtnText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
 });
