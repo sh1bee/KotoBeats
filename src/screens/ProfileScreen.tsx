@@ -12,7 +12,7 @@ import { useFlashcardStore } from '../store/flashcardStore';
 import { removeUser, getUser } from '../services/userStorage';
 import { useEffect, useState } from 'react';
 import type { Flashcard } from '../types';
-
+import { useNavigation } from '@react-navigation/native';
 const StatCard: React.FC<{ icon: any; value: string; label: string }> = ({ icon, value, label }) => (
   <View style={styles.statCard}>
     <Ionicons name={icon} size={24} color="#1DB954" />
@@ -32,6 +32,7 @@ const SettingItem: React.FC<{ icon: any; label: string; onPress?: () => void }> 
 );
 
 export const ProfileScreen = ({ onLogout }: { onLogout: () => void }) => {
+  const navigation = useNavigation();
   const deck = useFlashcardStore((state) => state.deck);
   const userId = useFlashcardStore((state) => state.userId);
   const [displayName, setDisplayName] = useState('');
@@ -64,6 +65,10 @@ export const ProfileScreen = ({ onLogout }: { onLogout: () => void }) => {
 
   return (
     <View style={styles.container}>
+      {/* Nút Back */}
+      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 20 }}>
+        <Ionicons name="arrow-back" size={24} color="#FFF" />
+      </TouchableOpacity>
       <View style={styles.profileHeader}>
         <View style={styles.avatarLarge}>
           <Text style={styles.avatarLargeText}>

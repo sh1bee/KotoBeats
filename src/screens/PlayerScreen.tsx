@@ -21,10 +21,11 @@ import { useAudioStore } from '../store/audioStore';
 import { useFlashcardStore } from '../store/flashcardStore';
 import { useAudioSync } from '../hooks/useAudioSync';
 import type { Flashcard, LyricLine, LyricToken } from '../types';
-import { useTrackChangeListener } from '../hooks/useTrackChangeListener';
+
 import { analyzeLyricLine } from '../services/aiAnalysisService';
 import type { LineAnalysis } from '../services/aiAnalysisService';
-
+import { useNavigation } from '@react-navigation/native';
+import { fetchSongsFromFirebase } from '../services/firebase/dbService';
 // ==========================================
 // COMPONENT 1: Focus Lyric Row (Tối ưu 60FPS)
 // ==========================================
@@ -85,15 +86,7 @@ const FocusLyricRow = React.memo(({
   return (
     <View style={styles.lyricRowContainer}>
       <Animated.View style={[styles.activeIndicator, { opacity: indicatorOpacity }]} />
-
-      <Animated.View style={[
-          styles.lyricContentWrapper,
-          { 
-            opacity, 
-            transform: [{ scale }],
-          }
-        ]}
-      >
+      <Animated.View style={[styles.lyricContentWrapper, { opacity, transform: [{ scale }] }]}>
         <LyricLineUI
           line={displayItem}
           isActive={isActive}
@@ -107,22 +100,17 @@ const FocusLyricRow = React.memo(({
   if (prevProps.index !== nextProps.index) return false;
   if (prevProps.item !== nextProps.item) return false;
   if (prevProps.item.lineId !== nextProps.item.lineId) return false;
-
   const wasActive = prevProps.index === prevProps.activeIndex;
   const isNowActive = nextProps.index === nextProps.activeIndex;
   if (wasActive !== isNowActive) return false;
-
   const wasUpcoming = prevProps.index === prevProps.activeIndex + 1;
   const isNowUpcoming = nextProps.index === nextProps.activeIndex + 1;
   if (wasUpcoming !== isNowUpcoming) return false;
-
   if (prevProps.isLearnMode !== nextProps.isLearnMode) return false;
   if (prevProps.quizAnswered !== nextProps.quizAnswered) return false;
   if (prevProps.maskedIndex !== nextProps.maskedIndex) return false;
-
   if (prevProps.onTokenPress !== nextProps.onTokenPress) return false;
   if (prevProps.onLineDoubleTap !== nextProps.onLineDoubleTap) return false;
-
   return true;
 });
 
@@ -134,21 +122,19 @@ interface RotatingCoverProps {
   spin: any;
 }
 
-const RotatingCover = React.memo(({ coverUrl, spin }: RotatingCoverProps) => {
-  return (
-    <View style={styles.albumArtWrapper}>
-      {coverUrl ? (
-        <Animated.Image 
-          source={{ uri: coverUrl }} 
-          style={[styles.albumArtImage, { transform: [{ rotate: spin }] }]} 
-        />
-      ) : (
-        <View style={styles.albumArtPlaceholder} />
-      )}
-      <View style={styles.albumArtGlow} />
-    </View>
-  );
-});
+const RotatingCover = React.memo(({ coverUrl, spin }: RotatingCoverProps) => (
+  <View style={styles.albumArtWrapper}>
+    {coverUrl ? (
+      <Animated.Image 
+        source={{ uri: coverUrl }} 
+        style={[styles.albumArtImage, { transform: [{ rotate: spin }] }]} 
+      />
+    ) : (
+      <View style={styles.albumArtPlaceholder} />
+    )}
+    <View style={styles.albumArtGlow} />
+  </View>
+));
 
 RotatingCover.displayName = 'RotatingCover';
 
@@ -178,7 +164,11 @@ const LyricListSection = React.memo(({
   const flatListRef = useRef<FlatList>(null);
 
   const activeIndex = useMemo(() => {
-    return songLyrics.findIndex((line) => playbackPosition >= line.startTime && playbackPosition <= line.endTime);
+    const index = songLyrics.findIndex(
+      (line) => playbackPosition >= line.startTime && playbackPosition <= line.endTime
+    );
+    // Đảm bảo index hợp lệ (không vượt quá mảng)
+    return index >= 0 && index < songLyrics.length ? index : -1;
   }, [songLyrics, playbackPosition]);
 
   useEffect(() => {
@@ -186,25 +176,33 @@ const LyricListSection = React.memo(({
   }, [activeIndex, onActiveIndexChange]);
 
   useEffect(() => {
-    if (activeIndex !== -1 && flatListRef.current) {
-      flatListRef.current.scrollToIndex({ index: activeIndex, animated: true, viewPosition: 0.5 });
+    if (
+      activeIndex !== -1 &&
+      flatListRef.current &&
+      songLyrics.length > 0 &&
+      activeIndex < songLyrics.length // kiểm tra an toàn
+    ) {
+      flatListRef.current.scrollToIndex({
+        index: activeIndex,
+        animated: true,
+        viewPosition: 0.5,
+        viewOffset: -20 // đẩy lên một chút vì có header và progress bar
+      });
     }
-  }, [activeIndex]);
+  }, [activeIndex, songLyrics.length]);
 
-  const renderItem = useCallback(({ item, index }: { item: LyricLine, index: number }) => {
-    return (
-      <FocusLyricRow
-        item={item}
-        index={index}
-        activeIndex={activeIndex}
-        isLearnMode={isLearnMode}
-        maskedIndex={maskedIndex}
-        quizAnswered={quizAnswered}
-        onTokenPress={onTokenPress}
-        onLineDoubleTap={onLineDoubleTap}
-      />
-    );
-  }, [activeIndex, isLearnMode, maskedIndex, quizAnswered, onTokenPress, onLineDoubleTap]);
+  const renderItem = useCallback(({ item, index }: { item: LyricLine, index: number }) => (
+    <FocusLyricRow
+      item={item}
+      index={index}
+      activeIndex={activeIndex}
+      isLearnMode={isLearnMode}
+      maskedIndex={maskedIndex}
+      quizAnswered={quizAnswered}
+      onTokenPress={onTokenPress}
+      onLineDoubleTap={onLineDoubleTap}
+    />
+  ), [activeIndex, isLearnMode, maskedIndex, quizAnswered, onTokenPress, onLineDoubleTap]);
 
   return (
     <FlatList
@@ -213,31 +211,29 @@ const LyricListSection = React.memo(({
       keyExtractor={(item, index) => item.lineId ? `${item.lineId}-${index}` : `line-${index}`}
       contentContainerStyle={styles.listContent}
       showsVerticalScrollIndicator={false}
-      
       renderItem={renderItem}
       initialNumToRender={10}
       maxToRenderPerBatch={10}
       windowSize={7}
-      removeClippedSubviews={true}
+      removeClippedSubviews={false}
       style={{ overflow: 'visible' }} 
       extraData={{ activeIndex, isLearnMode, quizAnswered, maskedIndex }}
-      onScrollToIndexFailed={(info) => {   // 👈 Thêm fallback
+      onScrollToIndexFailed={(info) => {
         setTimeout(() => {
           flatListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 });
         }, 100);
       }}
+      
     />
   );
-}, (prev, next) => {
-  return (
-    prev.isLearnMode === next.isLearnMode &&
-    prev.quizAnswered === next.quizAnswered &&
-    prev.maskedIndex === next.maskedIndex &&
-    prev.songLyrics === next.songLyrics &&
-    prev.onTokenPress === next.onTokenPress &&
-    prev.onLineDoubleTap === next.onLineDoubleTap
-  );
-});
+}, (prev, next) => (
+  prev.isLearnMode === next.isLearnMode &&
+  prev.quizAnswered === next.quizAnswered &&
+  prev.maskedIndex === next.maskedIndex &&
+  prev.songLyrics === next.songLyrics &&
+  prev.onTokenPress === next.onTokenPress &&
+  prev.onLineDoubleTap === next.onLineDoubleTap
+));
 
 LyricListSection.displayName = 'LyricListSection';
 
@@ -245,16 +241,19 @@ LyricListSection.displayName = 'LyricListSection';
 // MÀN HÌNH CHÍNH (PLAYER SCREEN)
 // ==========================================
 export const PlayerScreen = () => {
+  const navigation = useNavigation<any>();
   useAudioSync();
-  useTrackChangeListener();
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentSong = useAudioStore((state) => state.currentSong);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const setLoopInterval = useAudioStore((state) => state.setLoopInterval);
-  const addFlashcard = useFlashcardStore((state) => state.setDeck);
-  const currentDeck = useFlashcardStore((state) => state.deck);
+  const playlist = useAudioStore((state) => state.playlist);
+  const setPlaylist = useAudioStore((state) => state.setPlaylist);
+  const songLyrics = useAudioStore((state) => state.songLyrics);
+  const setSongLyrics = useAudioStore((state) => state.setSongLyrics);
+  const lastSongId = useAudioStore((state) => state.lastSongId);
+  const setLastSongId = useAudioStore((state) => state.setLastSongId);
 
-  const [songLyrics, setSongLyrics] = useState<LyricLine[]>([]);
   const [selectedToken, setSelectedToken] = useState<LyricToken | null>(null);
   const [isModalVisible, setModalVisible] = useState(false);
   const [isLearnMode, setIsLearnMode] = useState(false);
@@ -266,20 +265,15 @@ export const PlayerScreen = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const [activeIndex, setActiveIndex] = useState(-1);
-
   const spinValue = useRef(new Animated.Value(0)).current;
-
-  const [lrcTranslation, setLrcTranslation] = useState('');const setIgnoreStateChange = useAudioStore((state) => state.setIgnoreStateChange);
-
+  const [lrcTranslation, setLrcTranslation] = useState('');
+  const setIgnoreStateChange = useAudioStore((state) => state.setIgnoreStateChange);
+  const lastLyricsLoadedSongId = useRef<string | null>(null);
+  // Animation xoay đĩa
   useEffect(() => {
     if (isPlaying) {
       Animated.loop(
-        Animated.timing(spinValue, { 
-          toValue: 1, 
-          duration: 15000, 
-          easing: Easing.linear, 
-          useNativeDriver: true 
-        })
+        Animated.timing(spinValue, { toValue: 1, duration: 15000, easing: Easing.linear, useNativeDriver: true })
       ).start();
     } else {
       spinValue.stopAnimation();
@@ -288,47 +282,43 @@ export const PlayerScreen = () => {
 
   const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
-  // Load Nhạc
+  // Hàm load lyrics
+  const loadLyrics = useCallback(async (song: typeof currentSong) => {
+    if (!song) return [];
+    if (song.lyrics?.length) return song.lyrics;
+    if (song.lrc) return parseLrcText(song.lrc);
+    if (song.lrcUrl) {
+      try {
+        const response = await fetch(song.lrcUrl);
+        const text = await response.text();
+        return parseLrcText(text);
+      } catch (err) {
+        console.error('Fetch LRC error:', err);
+      }
+    }
+    return [];
+  }, []);
+
+  // Load nhạc + lyrics
   useEffect(() => {
     if (!currentSong) return;
-    let cancelled = false;
+
+    // Nếu lyrics đã được load cho bài hát này, không làm gì
+    if (lastLyricsLoadedSongId.current === currentSong._id) {
+      console.log('⏭️ Lyrics already loaded for', currentSong.title);
+      return;
+    }
+
+    console.log('📝 Loading lyrics for:', currentSong.title);
+    lastLyricsLoadedSongId.current = currentSong._id;
 
     const load = async () => {
-      try {
-        const playlist = useAudioStore.getState().playlist;
-        const startIndex = playlist.findIndex(s => s._id === currentSong._id);
-
-        if (startIndex !== -1 && playlist.length > 0) {
-          await loadAndPlaySong(playlist, startIndex);
-        } else {
-          await loadAndPlaySong([currentSong], 0);
-        }
-
-        let lyrics: LyricLine[] = [];
-        if (currentSong.lyrics?.length) {
-          lyrics = currentSong.lyrics;
-        } else if (currentSong.lrc) {
-          lyrics = parseLrcText(currentSong.lrc);
-        } else if (currentSong.lrcUrl) {
-          try {
-            const response = await fetch(currentSong.lrcUrl);
-            const text = await response.text();
-            lyrics = parseLrcText(text);
-          } catch (err) {
-            console.error('Fetch LRC error:', err);
-          }
-        }
-
-        if (!cancelled) {
-          setSongLyrics(lyrics);
-        }
-      } catch (error) {
-        console.error('[Player] Load song error:', error);
-      }
+      const lyrics = await loadLyrics(currentSong);
+      console.log('📝 Lyrics loaded:', lyrics.length, 'lines');
+      setSongLyrics(lyrics);
     };
 
     load();
-    return () => { cancelled = true; };
   }, [currentSong]);
 
   // Logic Quiz
@@ -349,30 +339,18 @@ export const PlayerScreen = () => {
   }, [activeIndex, isLearnMode, setIsPlaying, songLyrics]);
 
   // Handlers
-  const handleActiveIndexChange = useCallback((index: number) => {
-    setActiveIndex(index);
-  }, []);
+  const handleActiveIndexChange = useCallback((index: number) => setActiveIndex(index), []);
 
   const handleTokenPress = useCallback((token: LyricToken, line: LyricLine) => {
     setSelectedToken(token);
     setModalVisible(true);
     setLineAnalysis(null);
     setIsAnalyzing(true);
-
     setLrcTranslation(line.translation || '');
-
     const lineText = line.tokens.map(t => t.word).join('');
-    console.log('🔎 Phân tích dòng:', lineText);
-
     analyzeLyricLine(lineText, token.word)
-      .then((result) => {
-        console.log('✅ AI trả về:', JSON.stringify(result));
-        setLineAnalysis(result);
-      })
-      .catch(err => {
-        console.error('❌ AI analysis error:', err);
-        Alert.alert('Lỗi', `Không thể phân tích: ${err.message}`);
-      })
+      .then(setLineAnalysis)
+      .catch(err => Alert.alert('Lỗi', `Không thể phân tích: ${err.message}`))
       .finally(() => setIsAnalyzing(false));
   }, []);
 
@@ -386,9 +364,7 @@ export const PlayerScreen = () => {
     setModalVisible(false); 
     setSelectedToken(null); 
     setLoopInterval(null);
-    try { 
-      await TrackPlayer.setVolume(1.0); 
-    } catch (e) {}
+    try { await TrackPlayer.setVolume(1.0); } catch (e) {}
   }, [setLoopInterval]);
 
   const handleAnswerSelect = useCallback(async (selected: string) => {
@@ -408,57 +384,43 @@ export const PlayerScreen = () => {
   }, [activeIndex, correctAnswer, setIsPlaying, songLyrics]);
 
   const handlePlayPause = useCallback(async () => {
-    try {
-      const currentPlaying = useAudioStore.getState().isPlaying;
-      if (currentPlaying) {
-        await TrackPlayer.pause();
-        setIsPlaying(false);  // ✅ cập nhật thủ công vì sự kiện paused không bao giờ tới
-      } else {
-        await TrackPlayer.play();
-        setIsPlaying(true);   // ✅ cập nhật thủ công (phòng khi sự kiện ready cũng không tới ngay)
-      }
-    } catch (e) {
-      console.error('PlayPause error:', e);
+    const currentPlaying = useAudioStore.getState().isPlaying;
+    if (currentPlaying) {
+      await TrackPlayer.pause();
+      setIsPlaying(false);
+    } else {
+      await TrackPlayer.play();
+      setIsPlaying(true);
     }
   }, [setIsPlaying]);
 
-  const handleAddWordToSRS = useCallback((wordData: WordBreakdownItem) => {
+  const handleAddWordToSRS = useCallback((wordData: any) => {
     if (!currentSong || !lineAnalysis) return;
-    const newCard: Flashcard = {
+    useFlashcardStore.getState().addCard({
       _id: `card_${Date.now()}`,
       word: wordData.word,
       reading: wordData.reading,
       meaning: wordData.meaningVi,
       jlptLevel: wordData.jlptLevel || 'N3',
-      snippetData: {
-        songId: currentSong._id,
-        startTime: 0,
-        endTime: 0,
-        contextSentence: lineAnalysis.fullLine,
-      },
+      snippetData: { songId: currentSong._id, startTime: 0, endTime: 0, contextSentence: lineAnalysis.fullLine },
       srs: { repetition: 0, interval: 1, easeFactor: 2.5, nextReviewDate: new Date().toISOString() },
-    };
-    useFlashcardStore.getState().addCard(newCard); // ✅ dùng store action
+    });
   }, [currentSong, lineAnalysis]);
 
   const handleAddAllWordsToSRS = useCallback(() => {
     if (!lineAnalysis || !currentSong) return;
-    lineAnalysis.wordBreakdown.forEach((wordData) => {
-      handleAddWordToSRS(wordData); // sử dụng hàm đã có
-    });
+    lineAnalysis.wordBreakdown.forEach(w => handleAddWordToSRS(w));
   }, [lineAnalysis, currentSong, handleAddWordToSRS]);
 
-  type WordBreakdownItem = {
-    word: string;
-    reading: string;
-    meaningVi: string;
-    jlptLevel?: string;
-  };
-
+  // Nút Back
   return (
     <View style={styles.container}>
       <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0D0D10' }]} />
       
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Ionicons name="chevron-down" size={28} color="#FFF" />
+      </TouchableOpacity>
+
       <View style={styles.albumArtSection}>
         <RotatingCover coverUrl={currentSong?.coverUrl} spin={spin} />
         <View style={styles.songInfoContainer}>
@@ -494,33 +456,17 @@ export const PlayerScreen = () => {
         <View style={styles.playerControls}>
           <PlayerProgressBar duration={currentSong?.duration || 210} />
           <View style={styles.controlButtonsRow}>
-            <TouchableOpacity 
-              style={styles.sideControlBtn} 
-              onPress={async () => {
-                try {
-                  await TrackPlayer.skipToPrevious();
-                } catch (e) {
-                  console.error('Previous error:', e);
-                }
-              }}
-            >
+            <TouchableOpacity style={styles.sideControlBtn} onPress={async () => {
+              try { await TrackPlayer.skipToPrevious(); } catch (e) {}
+            }}>
               <Ionicons name="play-back" size={26} color="#A0A0A0" />
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.playPauseBtn} onPress={handlePlayPause}>
               <Ionicons name={isPlaying ? "pause" : "play"} size={30} color="#0A0A0C" />
             </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.sideControlBtn} 
-              onPress={async () => {
-                try {
-                  await TrackPlayer.skipToNext();
-                } catch (e) {
-                  console.error('Next error:', e);
-                }
-              }}
-            >
+            <TouchableOpacity style={styles.sideControlBtn} onPress={async () => {
+              try { await TrackPlayer.skipToNext(); } catch (e) {}
+            }}>
               <Ionicons name="play-forward" size={26} color="#A0A0A0" />
             </TouchableOpacity>
           </View>
@@ -546,80 +492,31 @@ export const PlayerScreen = () => {
 };
 
 // ==========================================
-// STYLES (giữ nguyên như cũ)
+// STYLES
 // ==========================================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0C' },
-  
   albumArtSection: { flex: 0.4, justifyContent: 'center', alignItems: 'center' },
   albumArtWrapper: { position: 'relative', width: 220, height: 220, justifyContent: 'center', alignItems: 'center' },
   albumArtPlaceholder: { width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   albumArtImage: { width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  
   songInfoContainer: { alignItems: 'center', marginTop: 20 },
   songTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginBottom: 6, letterSpacing: 0.5 },
   songArtist: { color: '#A0A0A0', fontSize: 16, fontWeight: '500' },
   albumArtGlow: { position: 'absolute', width: 240, height: 240, borderRadius: 120, backgroundColor: 'rgba(255, 255, 255, 0.05)', top: -10, left: -10, zIndex: -1 },
-  
   contentSection: { flex: 0.6, backgroundColor: 'rgba(255, 255, 255, 0.02)', borderTopLeftRadius: 40, borderTopRightRadius: 40, paddingTop: 10, overflow: 'hidden' },
   listContent: { paddingHorizontal: 16, paddingVertical: 40 }, 
-  
-  lyricRowContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 115, 
-    width: '100%',
-    position: 'relative',
-    overflow: 'visible',
-  },
-
-  activeIndicator: {
-    position: 'absolute',
-    left: 10, 
-    width: 4,
-    height: 36,
-    borderRadius: 2,
-    backgroundColor: '#1DB954',
-    shadowColor: '#1DB954',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  lyricContentWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 3,
-    paddingHorizontal: 48,
-  },
-
+  lyricRowContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 115, width: '100%', position: 'relative', overflow: 'visible' },
+  activeIndicator: { position: 'absolute', left: 10, width: 4, height: 36, borderRadius: 2, backgroundColor: '#1DB954', shadowColor: '#1DB954', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8, elevation: 4 },
+  lyricContentWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', zIndex: 3, paddingHorizontal: 48 },
   playerControls: { backgroundColor: 'rgba(0, 0, 0, 0.4)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 35 },
   controlButtonsRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 16 },
-  
-  playPauseBtn: { 
-    alignItems: 'center', 
-    backgroundColor: '#1DB954', 
-    borderRadius: 32, 
-    height: 64, 
-    justifyContent: 'center', 
-    marginHorizontal: 24, 
-    width: 64,
-    shadowColor: '#1DB954',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
+  playPauseBtn: { alignItems: 'center', backgroundColor: '#1DB954', borderRadius: 32, height: 64, justifyContent: 'center', marginHorizontal: 24, width: 64, shadowColor: '#1DB954', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
   sideControlBtn: { padding: 12 },
-  
+  backButton: { position: 'absolute', top: 50, left: 20, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   learnBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderRadius: 20, paddingVertical: 10, paddingHorizontal: 20, alignSelf: 'center', marginTop: 16 },
   learnBtnActive: { backgroundColor: '#1DB954', borderColor: '#1DB954' },
   learnBtnText: { color: '#A0A0A0', fontSize: 13, fontWeight: '700' },
-  
   quizContainer: { backgroundColor: 'rgba(0,0,0,0.3)', borderTopColor: '#1DB954', borderTopWidth: 2, padding: 20 },
   quizTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '600', marginBottom: 16, textAlign: 'center' },
   optionsRow: { flexWrap: 'wrap', flexDirection: 'row', justifyContent: 'space-around' },

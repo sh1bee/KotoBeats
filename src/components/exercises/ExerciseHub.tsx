@@ -27,9 +27,7 @@ export const ExerciseHub: React.FC<ExerciseHubProps> = ({ lineAnalysis, onBack }
   if (mode === 'chunk') {
     return <ChunkMatching lineAnalysis={lineAnalysis} onBack={() => setMode('menu')} />;
   }
-  console.log('ClozeTest:', ClozeTest);
-  console.log('ParticleQuiz:', ParticleQuiz);
-  console.log('ChunkMatching:', ChunkMatching);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>

@@ -1,3 +1,4 @@
+// app.config.js
 export default ({ config }) => ({
   ...config,
   plugins: [
@@ -12,6 +13,6 @@ export default ({ config }) => ({
         },
       },
     ],
-    './plugins/withTrackPlayerTurboModuleFix',
+    //'./plugins/withTrackPlayerTurboModuleFix',
   ],
 });

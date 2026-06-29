@@ -53,6 +53,7 @@ export const setupTrackPlayer = async (): Promise<boolean> => {
 // Load và play bài hát (Sử dụng API v5)
 export const loadAndPlaySong = async (playlist: Song[], startIndex: number): Promise<void> => {
   try {
+    console.log('📦 loadAndPlaySong called with playlist size:', playlist.length);
     const items = playlist.map(song => ({
       mediaId: song._id,
       url: song.audioUrl,
@@ -63,11 +64,11 @@ export const loadAndPlaySong = async (playlist: Song[], startIndex: number): Pro
     }));
 
     await TrackPlayer.setMediaItems(items);
-    // Nhảy đến đúng bài muốn phát (startIndex)
+    console.log('📦 TrackPlayer queue set with', items.length, 'items');
     await TrackPlayer.skipToIndex(startIndex);
     await TrackPlayer.play();
   } catch (error) {
-    console.error(`[TrackPlayer Play Error]:`, error);
+    console.error('[TrackPlayer Play Error]:', error);
   }
 };
 

@@ -12,36 +12,45 @@ export const useTrackChangeListener = () => {
     const intervalId = setInterval(async () => {
       try {
         const index = await TrackPlayer.getActiveMediaItemIndex();
+        //console.log('🔍 Polling active index:', index, 'prevIndex:', prevIndexRef.current);
         if (index !== null && index !== undefined && index !== prevIndexRef.current) {
           prevIndexRef.current = index;
           if (index >= 0 && index < playlist.length && playlist[index]) {
+            console.log('🎵 Setting current song to:', playlist[index].title);
             setCurrentSong(playlist[index]);
+          } else {
+            console.warn('⚠️ Playlist length:', playlist.length, 'index:', index);
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Polling error:', e);
+      }
     }, 1000);
 
-    const sub = TrackPlayer.addEventListener(
-        Event.PlaybackStateChanged,
-        (data: any) => {
+    const subPlaybackState = TrackPlayer.addEventListener(
+      Event.PlaybackStateChanged,
+      (data: any) => {
         const state = data?.state ?? data;
         const ignore = useAudioStore.getState().ignoreStateChange;
-        // Nếu đang tạm bỏ qua và sự kiện là buffering/ready thì không làm gì
-        if (ignore && (state === 'buffering' || state === 'ready')) {
-            return;
-        }
-        // Cập nhật isPlaying như cũ
+        if (ignore && (state === 'buffering' || state === 'ready')) return;
+
         if (state === 'playing' || state === 'buffering' || state === 'ready') {
-            setIsPlaying(true);
+          setIsPlaying(true);
         } else if (state === 'paused' || state === 'idle' || state === 'none' || state === 'stopped') {
-            setIsPlaying(false);
+          setIsPlaying(false);
         }
+
+        // Tự động chuyển bài
+        if (state === 'stopped' || state === 'idle') {
+          console.log('🔄 Track ended, skipping to next');
+          TrackPlayer.skipToNext().catch(err => console.error('Skip failed:', err));
         }
+      }
     );
 
     return () => {
       clearInterval(intervalId);
-      sub.remove();
+      subPlaybackState.remove();
     };
   }, [playlist, setCurrentSong, setIsPlaying]);
 };

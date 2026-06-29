@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { PanGestureHandler, State, GestureHandlerRootView } from 'react-native-gesture-handler';
 import type { LineAnalysis } from '../services/aiAnalysisService';
 import { ExerciseHub } from './exercises/ExerciseHub';
-
+import { getKanjiInfo, containsKanji } from '../services/kanjiService';
 // ========================
 // PALETTE MÀU SÁNG
 // ========================
@@ -154,12 +154,16 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
   onAddWordToSRS,
   onAddAllWordsToSRS,
   lrcTranslation,
+  token,
 }) => {
   const aligned = lineAnalysis?.alignedTranslation;
   const [allAdded, setAllAdded] = useState(false);
   const [addedWords, setAddedWords] = useState<Set<string>>(new Set());
   const buttonScale = useRef(new Animated.Value(1)).current;
   const [showExercise, setShowExercise] = useState(false);
+  const [kanjiList, setKanjiList] = useState<any[]>([]);
+
+  
 
   const handleAddWord = (wordData: any) => {
     if (onAddWordToSRS) {
@@ -228,6 +232,21 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
       </View>
     );
   };
+
+  useEffect(() => {
+    if (token && containsKanji(token.word)) {
+      const kanjis: any[] = [];
+      for (const char of token.word) {
+        if (/[\u4e00-\u9faf]/.test(char)) {
+          const info = getKanjiInfo(char);
+          if (info) kanjis.push(info);
+        }
+      }
+      setKanjiList(kanjis);
+    } else {
+      setKanjiList([]);
+    }
+  }, [token]);
 
   // Nếu đang trong chế độ luyện tập, hiển thị ExerciseHub
   if (showExercise && lineAnalysis) {
@@ -299,6 +318,47 @@ export const DictionaryModal: React.FC<DictionaryModalProps> = ({
                     ))}
                   </Section>
                 )}
+
+                {kanjiList.length > 0 && (
+                  <Section title="Chi tiết Kanji">
+                    {kanjiList.map((kanji, idx) => (
+                      <View key={idx} style={styles.kanjiCard}>
+                        <Text style={styles.kanjiChar}>{kanji.kanji}</Text>
+                        <View style={styles.kanjiDetails}>
+                          <Text style={styles.kanjiText}>
+                            <Text style={styles.kanjiLabel}>Kunyomi: </Text>
+                            {kanji.kunyomi?.join(', ') || 'Không có'}
+                          </Text>
+                          <Text style={styles.kanjiText}>
+                            <Text style={styles.kanjiLabel}>Onyomi: </Text>
+                            {kanji.onyomi?.join(', ') || 'Không có'}
+                          </Text>
+                          <Text style={styles.kanjiText}>
+                            <Text style={styles.kanjiLabel}>Số nét: </Text>
+                            {kanji.strokes}
+                          </Text>
+                          <Text style={styles.kanjiText}>
+                            <Text style={styles.kanjiLabel}>JLPT: </Text>
+                            N{kanji.jlpt || '?'}
+                          </Text>
+                          <Text style={styles.kanjiText}>
+                            <Text style={styles.kanjiLabel}>Tần suất: </Text>
+                            {kanji.freq ? `${kanji.freq}/2500` : 'Không rõ'}
+                          </Text>
+                          <Text style={styles.kanjiText}>
+                            <Text style={styles.kanjiLabel}>Ý nghĩa: </Text>
+                            {kanji.meaningsVi?.join(', ') || 'Không có'}
+                          </Text>
+                          <Text style={styles.kanjiText}>
+                            <Text style={styles.kanjiLabel}>Thành phần: </Text>
+                            {kanji.components?.join('; ') || 'Không có'}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </Section>
+                )}
+
 
                 {lineAnalysis.notes ? (
                   <Section title="Ghi chú">
@@ -488,4 +548,33 @@ const styles = StyleSheet.create({
   },
   learnAllButtonDone: { backgroundColor: '#2E7D32' },
   learnAllText: { color: '#0A0A0C', fontWeight: '700', fontSize: 16 },
+    kanjiCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  kanjiChar: {
+    fontSize: 48,
+    color: '#1DB954',
+    fontWeight: 'bold',
+    marginRight: 20,
+    width: 60,
+    textAlign: 'center',
+  },
+  kanjiDetails: {
+    flex: 1,
+  },
+  kanjiText: {
+    color: '#CCC',
+    fontSize: 14,
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  kanjiLabel: {
+    color: '#1DB954',
+    fontWeight: 'bold',
+  },
 });

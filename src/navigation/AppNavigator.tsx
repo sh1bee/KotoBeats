@@ -1,6 +1,7 @@
 // src/navigation/AppNavigator.tsx
 import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,12 +11,43 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { PlayerScreen } from '../screens/PlayerScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { LoginScreen } from '../screens/LoginScreen';
+import MusicScreen from '../screens/MusicScreen';
+import MiniPlayer from '../components/MiniPlayer';
 import { getUser, removeUser } from '../services/userStorage';
 import { useFlashcardStore } from '../store/flashcardStore';
+import { useTrackChangeListener } from '../hooks/useTrackChangeListener';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
-// Floating Tab Bar giữ nguyên style cũ (đã hoạt động)
+// Stack cho tab Music: MusicMain (danh sách) -> PlayerScreen
+const MusicStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="MusicMain" component={MusicScreen} />
+    <Stack.Screen name="PlayerScreen" component={PlayerScreen} />
+  </Stack.Navigator>
+);
+
+// Stack cho Home: HomeMain -> Profile
+const HomeStack = ({ onLogout }: { onLogout: () => void }) => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="HomeMain" component={HomeScreen} />
+    <Stack.Screen name="Profile">
+      {() => <ProfileScreen onLogout={onLogout} />}
+    </Stack.Screen>
+  </Stack.Navigator>
+);
+
+// Màn hình Học tập tạm thời
+const LearnScreenPlaceholder = () => (
+  <View style={{ flex: 1, backgroundColor: '#0E0E12', justifyContent: 'center', alignItems: 'center' }}>
+    <Ionicons name="school" size={64} color="#1DB954" />
+    <Text style={{ color: '#FFF', fontSize: 20, marginTop: 20 }}>Học tập</Text>
+    <Text style={{ color: '#AAA', fontSize: 14, marginTop: 8 }}>Tính năng đang phát triển</Text>
+  </View>
+);
+
+// Floating Tab Bar
 const FloatingTabBar = ({ state, descriptors, navigation }: any) => {
   return (
     <BlurView tint="dark" intensity={20} style={styles.tabBarBlur}>
@@ -37,9 +69,9 @@ const FloatingTabBar = ({ state, descriptors, navigation }: any) => {
           };
 
           const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
+            Music: isFocused ? 'musical-notes' : 'musical-notes-outline',
             Home: isFocused ? 'home' : 'home-outline',
-            Player: isFocused ? 'musical-notes' : 'musical-notes-outline',
-            Profile: isFocused ? 'person' : 'person-outline',
+            Learn: isFocused ? 'school' : 'school-outline',
           };
           const iconName = icons[route.name] || 'help-circle';
 
@@ -55,22 +87,44 @@ const FloatingTabBar = ({ state, descriptors, navigation }: any) => {
   );
 };
 
-// Điều hướng chính khi đã đăng nhập
-const MainTabs = ({ onLogout }: { onLogout: () => void }) => (
-  <Tab.Navigator
-    tabBar={(props) => <FloatingTabBar {...props} />}
-    screenOptions={{ headerShown: false }}
-  >
-    <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Trang chủ' }} />
-    <Tab.Screen name="Player" component={PlayerScreen} options={{ tabBarLabel: 'Nghe nhạc' }} />
-    <Tab.Screen
-      name="Profile"
-      options={{ tabBarLabel: 'Tài khoản' }}
-    >
-      {() => <ProfileScreen onLogout={onLogout} />}
-    </Tab.Screen>
-  </Tab.Navigator>
-);
+// Main Tabs (khi đã đăng nhập)
+const MainTabs = ({ onLogout }: { onLogout: () => void }) => {
+  const [isPlayerVisible, setIsPlayerVisible] = useState(false);
+
+  // ✅ Luôn lắng nghe thay đổi bài hát, không chỉ trong PlayerScreen
+  useTrackChangeListener();
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Tab.Navigator
+        tabBar={(props) => <FloatingTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
+        initialRouteName="Home"
+        screenListeners={{
+          state: (e) => {
+            const state = e.data?.state;
+            if (state?.routes) {
+              const musicRoute = state.routes.find((r: any) => r.name === 'Music');
+              if (musicRoute?.state?.routes) {
+                const currentScreen = musicRoute.state.routes[musicRoute.state.routes.length - 1]?.name;
+                setIsPlayerVisible(currentScreen === 'PlayerScreen');
+              }
+            }
+          },
+        }}
+      >
+        <Tab.Screen name="Music" component={MusicStack} options={{ tabBarLabel: 'Nghe nhạc' }} />
+        <Tab.Screen name="Home" options={{ tabBarLabel: 'Trang chủ' }}>
+          {() => <HomeStack onLogout={onLogout} />}
+        </Tab.Screen>
+        <Tab.Screen name="Learn" component={LearnScreenPlaceholder} options={{ tabBarLabel: 'Học tập' }} />
+      </Tab.Navigator>
+
+      {/* Mini Player chỉ hiện khi có bài hát và không ở PlayerScreen */}
+      <MiniPlayer isPlayerVisible={isPlayerVisible} />
+    </View>
+  );
+};
 
 // Component gốc của App
 export const AppNavigator = () => {

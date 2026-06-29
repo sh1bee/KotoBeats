@@ -11,4 +11,6 @@ config.resolver.extraNodeModules = {
   ),
 };
 
+config.resolver.assetExts.push('json');
+
 module.exports = config;

@@ -10,22 +10,23 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.kotobeat.app",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
       "package": "com.kotobeat.app",
-      "adaptiveIcon": {
-        "backgroundColor": "#0a0a0a",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
+      
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bc6e2dec-9f1b-42e5-8ea9-87480cd7dd5e"
+      }
     }
-    // Đã xóa mảng plugins ở đây để tránh trùng lặp với app.config.js
   }
 }

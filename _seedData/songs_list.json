@@ -142,5 +142,204 @@
     "coverUrl": "https://drive.google.com/file/d/16-nzyWU3IlXQKV-Holk70d_6vrdO9_GG/view?usp=sharing",
     "duration": 185,
     "lrcFileName": "VOID (空の箱).lrc"
+  },
+  {
+    "_id": "song_018",
+    "title": "灼熱にて純情(wii-wii-woo)",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1mYMbGfv9I86YwqatpmIpaOfHcEeqJUcN/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 228,
+    "lrcFileName": "灼熱にて純情(wii-wii-woo).lrc"
+  },
+  {
+    "_id": "song_019",
+    "title": "Template",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1xYLnK6M-w9RenfitBHIKyycSCsb6RjR-/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 187,
+    "lrcFileName": "TEMPLATE.lrc"
+  },
+  {
+    "_id": "song_020",
+    "title": "みちづれ",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1jU-CGu4QKcPQGbtS4nW-6RQP0enMz6Bm/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 193,
+    "lrcFileName": "みちづれ.lrc"
+  },
+  {
+    "_id": "song_021",
+    "title": "褪せたハナミドリ",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1aLWIEKZ9NVDd2f-pz3hWWANYmsIhXTuB/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 217,
+    "lrcFileName": "褪せたハナミドリ.lrc"
+  },
+  {
+    "_id": "song_022",
+    "title": "TRUE GIRL SHOW",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/15Oz5V0dZlKPTAg35iTxpUIqEFVjKtcu_/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 229,
+    "lrcFileName": "TRUE GIRL SHOW.lrc"
+  },
+  {
+    "_id": "song_023",
+    "title": "デビュタントボール",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1nqjKxLCZ2GhbmxkM-qSggtuaXWZkEKAu/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 348,
+    "lrcFileName": "デビュタントボール.lrc"
+  },
+  {
+    "_id": "song_024",
+    "title": "7 DAY",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1MFg9ZBLg53jV-XaAju0hF7QtnMUjqXah/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 214,
+    "lrcFileName": "7 DAY.lrc"
+  },
+  {
+    "_id": "song_025",
+    "title": "Damn Good Day",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1XzBuoQN5Zd4SAQ2gM47QMrpLcRWT3gIF/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 182,
+    "lrcFileName": "Damn Good Day.lrc"
+  },
+  {
+    "_id": "song_026",
+    "title": "ソワレ",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1WnWE9YUUc_oXHHpqdvev8Iz30bZI5xqA/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 228,
+    "lrcFileName": "ソワレ.lrc"
+  },
+  {
+    "_id": "song_027",
+    "title": "Newton",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1hV_DGWOUSNjvPfdpTVOhezuJzP3OJ9R6/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 216,
+    "lrcFileName": "Newton.lrc"
+  },
+  {
+    "_id": "song_028",
+    "title": "放送室",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1Gk48XHGK9fW9xiVQlKmqinnOU3EIEby4/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 208,
+    "lrcFileName": "放送室.lrc"
+  },
+  {
+    "_id": "song_029",
+    "title": "灼熱にて純情(wii wii woo) [Special Arrange ver.]",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1db2FH7jEdKh9iHundKWQwUGMf04H40uY/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1GIEXdky6lUywVSsG6ttM4z85ttQlMCsc/view?usp=sharing",
+    "duration": 249,
+    "lrcFileName": "灼熱にて純情(wii wii woo) [Special Arrange ver.].lrc"
+  },
+  {
+    "_id": "song_030",
+    "title": "先駆者",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1wdE7-9hGGOK2gdIaJJkx1NAnotd8iL2b/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1mKOrwVhM3MvJ4NwKMf3TrQxagCTCxFws/view?usp=sharing",
+    "duration": 276,
+    "lrcFileName": "先駆者.lrc"
+  },
+  {
+    "_id": "song_031",
+    "title": "ビビデバ",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1O912CuTH1ccLjLr9B-Sgh1ClqiDlSTXd/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1mKOrwVhM3MvJ4NwKMf3TrQxagCTCxFws/view?usp=sharing",
+    "duration": 165,
+    "lrcFileName": "ビビデバ.lrc"
+  },
+  {
+    "_id": "song_032",
+    "title": "AWAKE",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1N_qXSPvBKKkFmvl5z2nErNxUjSVrUVUf/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1mKOrwVhM3MvJ4NwKMf3TrQxagCTCxFws/view?usp=sharing",
+    "duration": 197,
+    "lrcFileName": "AWAKE.lrc"
+  },
+  {
+    "_id": "song_033",
+    "title": "ビーナスバグ",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1sQX7OtR1-wkbT57332gsQCc69L5m2Yt-/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1mKOrwVhM3MvJ4NwKMf3TrQxagCTCxFws/view?usp=sharing",
+    "duration": 169,
+    "lrcFileName": "ビーナスバグ.lrc"
+  },
+  {
+    "_id": "song_034",
+    "title": "Caramel Pain",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1oIX6-Fj6VPA3KwdFoG6JsbH6K6HjsQ2o/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1mKOrwVhM3MvJ4NwKMf3TrQxagCTCxFws/view?usp=sharing",
+    "duration": 179,
+    "lrcFileName": "Caramel Pain.lrc"
+  },
+  {
+    "_id": "song_035",
+    "title": "ムーンライト",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1xyRDPTpxMQpMEJB7zXYFXdykTB-kj8AB/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1mKOrwVhM3MvJ4NwKMf3TrQxagCTCxFws/view?usp=sharing",
+    "duration": 179,
+    "lrcFileName": "ムーンライト.lrc"
+  },
+  {
+    "_id": "song_036",
+    "title": "DEADPOOL feat. 花譜",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1Ic0gWF6o2YEdXU9jsaAKgIhewhlIxTPa/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1mKOrwVhM3MvJ4NwKMf3TrQxagCTCxFws/view?usp=sharing",
+    "duration": 204,
+    "lrcFileName": "DEADPOOL feat. 花譜.lrc"
+  },
+  {
+    "_id": "song_037",
+    "title": "レクイエム (星街すいせい ver.)",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1YdlqauCKnIipYY83iZRaQMkKW3vNn78q/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1mKOrwVhM3MvJ4NwKMf3TrQxagCTCxFws/view?usp=sharing",
+    "duration": 158,
+    "lrcFileName": "レクイエム (星街すいせい ver.).lrc"
+  },
+  {
+    "_id": "song_038",
+    "title": "ザイオン",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1rgIvJiz1WkWVVfSxGIIt1zjmMc5dyjMD/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1mKOrwVhM3MvJ4NwKMf3TrQxagCTCxFws/view?usp=sharing",
+    "duration": 250,
+    "lrcFileName": "ザイオン.lrc"
+  },
+  {
+    "_id": "song_039",
+    "title": "綺麗事",
+    "artist": "Hoshimachi Suisei",
+    "audioUrl": "https://drive.google.com/file/d/1ZKDcqZlVaOiK4r9_JY2UuK5EA5RAUIQf/view?usp=sharing",
+    "coverUrl": "https://drive.google.com/file/d/1mKOrwVhM3MvJ4NwKMf3TrQxagCTCxFws/view?usp=sharing",
+    "duration": 226,
+    "lrcFileName": "綺麗事.lrc"
   }
 ]
+
