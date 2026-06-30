@@ -260,7 +260,7 @@ export const HomeScreen = () => {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#1DB954" />
-        <Text style={styles.loadingText}>Đang tải bài hát...</Text>
+        <Text style={styles.loadingText}>Đang tải...</Text>
       </View>
     );
   }

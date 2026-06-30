@@ -164,11 +164,10 @@ const LyricListSection = React.memo(({
   const flatListRef = useRef<FlatList>(null);
 
   const activeIndex = useMemo(() => {
-    const index = songLyrics.findIndex(
+    if (!songLyrics || songLyrics.length === 0) return -1; // 👈 Thêm
+    return songLyrics.findIndex(
       (line) => playbackPosition >= line.startTime && playbackPosition <= line.endTime
     );
-    // Đảm bảo index hợp lệ (không vượt quá mảng)
-    return index >= 0 && index < songLyrics.length ? index : -1;
   }, [songLyrics, playbackPosition]);
 
   useEffect(() => {
@@ -176,12 +175,7 @@ const LyricListSection = React.memo(({
   }, [activeIndex, onActiveIndexChange]);
 
   useEffect(() => {
-    if (
-      activeIndex !== -1 &&
-      flatListRef.current &&
-      songLyrics.length > 0 &&
-      activeIndex < songLyrics.length // kiểm tra an toàn
-    ) {
+    if (activeIndex !== -1 && flatListRef.current && songLyrics.length > 0 && activeIndex < songLyrics.length) {
       flatListRef.current.scrollToIndex({
         index: activeIndex,
         animated: true,

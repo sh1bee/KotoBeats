@@ -16,6 +16,8 @@ import MiniPlayer from '../components/MiniPlayer';
 import { getUser, removeUser } from '../services/userStorage';
 import { useFlashcardStore } from '../store/flashcardStore';
 import { useTrackChangeListener } from '../hooks/useTrackChangeListener';
+import { AlbumDetailScreen } from '../screens/AlbumDetailScreen';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -25,6 +27,7 @@ const MusicStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="MusicMain" component={MusicScreen} />
     <Stack.Screen name="PlayerScreen" component={PlayerScreen} />
+    <Stack.Screen name="AlbumDetail" component={AlbumDetailScreen} />
   </Stack.Navigator>
 );
 

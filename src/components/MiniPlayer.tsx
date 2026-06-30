@@ -55,12 +55,21 @@ const MiniPlayer: React.FC<Props> = ({ isPlayerVisible }) => {
 
   const handlePrevious = async (e: any) => {
     e.stopPropagation?.();
-    try { await TrackPlayer.skipToPrevious(); } catch {}
+    try {
+      await TrackPlayer.skipToPrevious();
+    } catch (err) {
+      // Bỏ qua lỗi nếu không có bài trước đó
+    }
   };
+
 
   const handleNext = async (e: any) => {
     e.stopPropagation?.();
-    try { await TrackPlayer.skipToNext(); } catch {}
+    try {
+      await TrackPlayer.skipToNext();
+    } catch (err) {
+      // Bỏ qua lỗi nếu không có bài tiếp theo
+    }
   };
 
   // Nếu đang ở PlayerScreen hoặc không có bài hát, ẩn MiniPlayer

@@ -53,3 +53,5 @@ src/services/apiKeys.ts
 # Logs
 *.log
 *logs.txt
+
+assets/dictionary/kanji_vi.json

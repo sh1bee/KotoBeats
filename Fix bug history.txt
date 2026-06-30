@@ -71,3 +71,68 @@ module.exports = config;
 
 ## 💡 Bài học rút ra (Lesson Learned)
 * Trong dự án sử dụng **Expo**, khi copy các đoạn code cấu hình từ tài liệu hướng dẫn (Documentation) của các thư viện bên thứ ba, phải đặc biệt lưu ý xem hướng dẫn đó dành cho **React Native CLI** hay **Expo**. Luôn ưu tiên sử dụng wrapper của Expo (ví dụ: `expo/metro-config`) để không làm mất các tính năng built-in của hệ sinh thái Expo.
+--
+vấn đề ảnh bị "đen" khi chuyển bài hát. Mô tả lỗi: Khi skip sang bài mới (bài B), ảnh của bài B hiển thị bình thường, nhưng ảnh của bài cũ (bài A) trở nên "đen". Nếu quay lại bài A, ảnh của A lại hiển thị bình thường, và bây giờ bài B bị đen.
+
+Lỗi bạn đang gặp phải là một "cạm bẫy" rất kinh điển trong React Native khi kết hợp React.memo với sự thay đổi về Layout (kiểu dáng kích thước).
+Màu "đen" mà bạn thấy thực chất không phải ảnh bị lỗi màu, mà đó chính là màu nền backgroundColor: '#1A1A1A' của coverWrap. Ảnh đã bị biến mất (thu nhỏ về 0x0) và để lộ lớp nền ra.
+🔍 Nguyên nhân gốc rễ (Root Cause):
+Hãy nhìn vào CSS của bạn:
+Khi bài hát Active: coverWrap có thêm borderWidth: 2.
+Khi bài hát Inactive: coverWrap mất borderWidth (trở về 0).
+Sự thay đổi borderWidth làm thay đổi kích thước phần không gian bên trong của coverWrap. Bình thường, khi kích thước parent thay đổi, component con (<Image>) sẽ được layout engine (Yoga) tính toán lại để giãn ra cho vừa.
+TUY NHIÊN, bạn lại dùng MemoizedCover chặn đứng hoàn toàn việc re-render của ảnh bằng (prev, next) => prev.uri === next.uri. Hậu quả là:
+Bài hát A tắt isActive -> borderWidth về 0.
+Parent thay đổi layout, nhưng Component <Image> bên trong hét lên: "Tôi không đổi URI, tôi sẽ không re-render!".
+Do từ chối cập nhật layout cùng parent, Native View của <Image> bị lỗi tọa độ/kích thước, dẫn đến sập (collapse) và biến mất -> Lòi màu nền đen ra.
+🛠️ CÁCH KHẮC PHỤC (Chọn 1 trong 2 cách)
+Cách 1: Fix bằng CSS Layout (Nên dùng nếu muốn giữ Memo)
+Cách giải quyết rất đơn giản: Đừng làm thay đổi kích thước của parent nữa.
+Hãy cho coverWrap luôn luôn có viền (border 2px), nhưng khi KHÔNG active thì viền có màu trong suốt (transparent). Khi active thì đổi màu viền sang xanh.
+Bạn chỉ cần sửa đúng phần styles:
+code
+JavaScript
+const styles = StyleSheet.create({
+  // ... (giữ nguyên các style khác)
+  
+  coverWrap: { 
+    width: 60, height: 60, 
+    borderRadius: 16, 
+    marginRight: 16, 
+    overflow: 'hidden', 
+    backgroundColor: '#1A1A1A',
+    // THÊM 2 DÒNG NÀY: Luôn giữ border 2px để layout không bị giật
+    borderWidth: 2, 
+    borderColor: 'transparent' 
+  },
+  coverActive: { 
+    // CHỈ ĐỔI MÀU, KHÔNG ĐỔI KÍCH THƯỚC BORDER NỮA
+    borderColor: '#1DB954' 
+  },
+  
+  // ... (giữ nguyên các style khác)
+});
+Cách 2: Xóa bỏ MemoizedCover (Best Practice)
+Thực tế, việc bạn bọc React.memo cho <Image> mặc định của React Native là sự tối ưu hóa dư thừa (premature optimization).
+Bản thân Native Layer (Android/iOS) của React Native đã tự động cache hình ảnh khi URI giống nhau rồi. Việc Component JS re-render lại thẻ <Image> tốn chi phí cực kỳ nhỏ (vài mili-giây), không hề làm giật app.
+Bạn hãy xóa hẳn cái MemoizedCover đi và dùng thẳng <Image>:
+code
+JavaScript
+// Xóa cục MemoizedCover này đi
+// const MemoizedCover = React.memo(...) 
+
+// Trong component AnimatedSongItem, gọi thẳng Image:
+<View style={[styles.coverWrap, isActive && styles.coverActive]}>
+  {item.coverUrl ? (
+    <Image source={{ uri: item.coverUrl }} style={styles.cover} fadeDuration={0} />
+  ) : (
+    <View style={styles.coverPlaceholder}>
+       <Ionicons name="musical-notes" size={24} color="#444" />
+    </View>
+  )}
+  {/* ... equalizer ... */}
+</View>
+💡 Lời khuyên thêm:
+Như mình có phân tích ở câu hỏi trước, để app thực sự mượt khi có 100+ bài hát, thay vì dùng <Image> của React Native và tìm cách chặn re-render bằng React.memo, bạn hãy cài thư viện expo-image (nếu dùng Expo) hoặc react-native-fast-image (nếu dùng bare React Native).
+Những thư viện này quản lý memory cache của ảnh cực đỉnh, tự động fix luôn mấy lỗi chớp đen ảnh kiểu này mà bạn không cần phải viết thêm một dòng logic chặn render nào cả.
+---
